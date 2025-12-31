@@ -10,7 +10,7 @@ function JsonFormatter() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [indent, setIndent] = useState(2);
-  const [viewMode, setViewMode] = useState<'code' | 'tree'>('code');
+  const [viewMode, setViewMode] = useState<'code' | 'tree'>('tree');
 
   // 解析后的 JSON 数据，用于 Tree View
   const parsedData = useMemo(() => {
