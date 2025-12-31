@@ -14,6 +14,9 @@ stats-*.json
 .wxt
 web-ext.config.ts
 
+# Claude Code 项目文档
+CLAUDE.md
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
