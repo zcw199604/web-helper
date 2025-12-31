@@ -31,7 +31,7 @@ const downloadJson = (data: any, fileName: string) => {
 };
 
 export function JsonTree({ data, name, isLast = true, level = 0, initiallyExpanded = true }: JsonTreeProps) {
-  const [isExpanded, setIsExpanded] = useState(level < 2 && initiallyExpanded);
+  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [copied, setCopied] = useState(false);
   const type = getType(data);
   const isObject = type === 'object' || type === 'array';
