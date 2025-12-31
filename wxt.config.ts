@@ -2,6 +2,8 @@ import { defineConfig } from 'wxt';
 
 // See https://wxt.dev/api/config.html
 export default defineConfig({
+  // 打包输出目录
+  outDir: 'build',
   modules: ['@wxt-dev/module-react'],
   manifest: {
     name: 'Web Helper - 开发者工具箱',
