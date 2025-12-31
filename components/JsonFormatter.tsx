@@ -166,30 +166,28 @@ function JsonFormatter() {
                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output</span>
                  
                  {/* 视图切换 */}
-                 {parsedData && (
-                    <div className="flex items-center p-0.5 bg-slate-100 rounded-md">
-                        <button
-                            onClick={() => setViewMode('code')}
-                            className={cn(
-                                "p-1 rounded text-slate-500 transition-all",
-                                viewMode === 'code' ? "bg-white text-blue-600 shadow-sm" : "hover:text-slate-700"
-                            )}
-                            title="代码视图"
-                        >
-                            <Code2 className="w-3.5 h-3.5" />
-                        </button>
-                         <button
-                            onClick={() => setViewMode('tree')}
-                            className={cn(
-                                "p-1 rounded text-slate-500 transition-all",
-                                viewMode === 'tree' ? "bg-white text-blue-600 shadow-sm" : "hover:text-slate-700"
-                            )}
-                             title="树形视图 (可交互)"
-                        >
-                            <Network className="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                 )}
+                 <div className="flex items-center p-0.5 bg-slate-100 rounded-md">
+                    <button
+                        onClick={() => setViewMode('code')}
+                        className={cn(
+                            "p-1 rounded text-slate-500 transition-all",
+                            viewMode === 'code' ? "bg-white text-blue-600 shadow-sm" : "hover:text-slate-700"
+                        )}
+                        title="代码视图"
+                    >
+                        <Code2 className="w-3.5 h-3.5" />
+                    </button>
+                     <button
+                        onClick={() => setViewMode('tree')}
+                        className={cn(
+                            "p-1 rounded text-slate-500 transition-all",
+                            viewMode === 'tree' ? "bg-white text-blue-600 shadow-sm" : "hover:text-slate-700"
+                        )}
+                         title="树形视图 (可交互)"
+                    >
+                        <Network className="w-3.5 h-3.5" />
+                    </button>
+                </div>
              </div>
 
             <div className="flex items-center gap-2">
