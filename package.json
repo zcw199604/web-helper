@@ -2,7 +2,7 @@
   "name": "web-helper",
   "description": "开发者工具箱：JSON格式化、Base64转换、URL编解码、Cron表达式、JWT解码",
   "private": true,
-  "version": "1.0.1",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "wxt",

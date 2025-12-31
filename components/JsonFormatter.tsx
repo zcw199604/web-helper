@@ -1,7 +1,8 @@
-import { useState, useCallback } from 'react';
-import { Copy, Check, Trash2, FileJson, ArrowRightLeft, AlignLeft, ShieldCheck, Minimize2 } from 'lucide-react';
+import { useState, useCallback, useMemo } from 'react';
+import { Copy, Check, Trash2, FileJson, AlignLeft, Minimize2, ShieldCheck, Code2, Network, Download } from 'lucide-react';
 import { formatJson, minifyJson, validateJson } from '@/utils/json';
 import { cn } from '@/utils/cn';
+import { JsonTree } from '@/components/ui/JsonTree';
 
 function JsonFormatter() {
   const [input, setInput] = useState('');
@@ -9,6 +10,17 @@ function JsonFormatter() {
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [indent, setIndent] = useState(2);
+  const [viewMode, setViewMode] = useState<'code' | 'tree'>('code');
+
+  // 解析后的 JSON 数据，用于 Tree View
+  const parsedData = useMemo(() => {
+    if (!output) return null;
+    try {
+      return JSON.parse(output);
+    } catch {
+      return null;
+    }
+  }, [output]);
 
   // 格式化
   const handleFormat = useCallback(() => {
@@ -52,11 +64,26 @@ function JsonFormatter() {
     setTimeout(() => setCopied(false), 2000);
   }, [output]);
 
+  // 下载整个 JSON
+  const handleDownloadFull = useCallback(() => {
+    if (!output) return;
+    const blob = new Blob([output], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'formatted.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, [output]);
+
   // 清空
   const handleClear = useCallback(() => {
     setInput('');
     setOutput('');
     setError(null);
+    setViewMode('code');
   }, []);
 
   return (
@@ -135,8 +162,51 @@ function JsonFormatter() {
         {/* 输出区 */}
         <div className="flex flex-col h-full bg-white relative group">
           <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-white">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output</span>
+             <div className="flex items-center gap-3">
+                 <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output</span>
+                 
+                 {/* 视图切换 */}
+                 {parsedData && (
+                    <div className="flex items-center p-0.5 bg-slate-100 rounded-md">
+                        <button
+                            onClick={() => setViewMode('code')}
+                            className={cn(
+                                "p-1 rounded text-slate-500 transition-all",
+                                viewMode === 'code' ? "bg-white text-blue-600 shadow-sm" : "hover:text-slate-700"
+                            )}
+                            title="代码视图"
+                        >
+                            <Code2 className="w-3.5 h-3.5" />
+                        </button>
+                         <button
+                            onClick={() => setViewMode('tree')}
+                            className={cn(
+                                "p-1 rounded text-slate-500 transition-all",
+                                viewMode === 'tree' ? "bg-white text-blue-600 shadow-sm" : "hover:text-slate-700"
+                            )}
+                             title="树形视图 (可交互)"
+                        >
+                            <Network className="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                 )}
+             </div>
+
             <div className="flex items-center gap-2">
+               <button
+                onClick={handleDownloadFull}
+                disabled={!output}
+                className={cn(
+                  'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all',
+                  output
+                    ? 'text-slate-600 hover:bg-slate-100 active:scale-95'
+                    : 'text-slate-300 cursor-not-allowed'
+                )}
+                title="下载完整 JSON"
+              >
+                 <Download className="w-3.5 h-3.5" />
+                 <span className="hidden sm:inline">下载</span>
+              </button>
               <button
                 onClick={handleCopy}
                 disabled={!output}
@@ -155,19 +225,36 @@ function JsonFormatter() {
                 ) : (
                   <>
                     <Copy className="w-3.5 h-3.5" />
-                    <span>复制结果</span>
+                    <span>复制</span>
                   </>
                 )}
               </button>
             </div>
           </div>
-          <textarea
-            value={output}
-            readOnly
-            placeholder="等待处理..."
-            className="flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none custom-scrollbar leading-relaxed selection:bg-blue-100 selection:text-blue-900"
-            spellCheck={false}
-          />
+          
+          {/* 内容区域 */}
+          <div className="flex-1 relative overflow-hidden">
+             {viewMode === 'code' ? (
+                <textarea
+                    value={output}
+                    readOnly
+                    placeholder="等待处理..."
+                    className="absolute inset-0 w-full h-full p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none custom-scrollbar leading-relaxed selection:bg-blue-100 selection:text-blue-900"
+                    spellCheck={false}
+                />
+             ) : (
+                 <div className="absolute inset-0 w-full h-full overflow-auto p-4 custom-scrollbar">
+                    {parsedData ? (
+                        <JsonTree data={parsedData} name="root" isLast={true} />
+                    ) : (
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                             <Network className="w-8 h-8 mb-2 opacity-50" />
+                             <p className="text-sm">无法解析为 JSON 对象</p>
+                        </div>
+                    )}
+                 </div>
+             )}
+          </div>
         </div>
       </div>
     </div>
