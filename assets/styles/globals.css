@@ -1,26 +1,80 @@
 @import "tailwindcss";
 
-/* 自定义主题变量 */
+/* Custom Theme Variables */
 @theme {
-  /* 主色调 */
+  /* Brand Colors */
   --color-primary: #3b82f6;
   --color-primary-hover: #2563eb;
-
-  /* 背景色 */
+  --color-primary-light: #eff6ff;
+  
+  /* Neutral Colors */
   --color-bg-base: #ffffff;
-  --color-bg-secondary: #f3f4f6;
+  --color-bg-subtle: #f8fafc;
+  --color-bg-surface: #ffffff;
+  
+  --color-text-main: #0f172a;
+  --color-text-muted: #64748b;
+  --color-text-subtle: #94a3b8;
 
-  /* 文字颜色 */
-  --color-text-base: #1f2937;
-  --color-text-secondary: #6b7280;
-
-  /* 边框颜色 */
-  --color-border: #e5e7eb;
+  --color-border-subtle: #e2e8f0;
+  --color-border-default: #cbd5e1;
 }
 
-/* 基础样式 */
+/* Base Styles */
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  background-color: var(--color-bg-base);
-  color: var(--color-text-base);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  background-color: var(--color-bg-subtle);
+  color: var(--color-text-main);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
+
+/* Utility Classes */
+@layer components {
+  .btn {
+    @apply inline-flex items-center justify-center px-4 py-2 rounded-lg text-sm font-medium transition-all duration-200 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-1 disabled:opacity-50 disabled:cursor-not-allowed;
+  }
+  
+  .btn-primary {
+    @apply bg-blue-600 text-white hover:bg-blue-700 hover:shadow-lg hover:shadow-blue-500/20 active:scale-95 focus:ring-blue-500;
+  }
+  
+  .btn-secondary {
+    @apply bg-white text-slate-700 border border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm active:scale-95 focus:ring-slate-400;
+  }
+  
+  .btn-ghost {
+    @apply text-slate-600 hover:bg-slate-100 hover:text-slate-900 focus:ring-slate-400;
+  }
+
+  .btn-icon {
+    @apply p-2 rounded-lg text-slate-500 hover:text-slate-700 hover:bg-slate-100 transition-colors;
+  }
+
+  .input-base {
+    @apply w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-sm text-slate-700 placeholder-slate-400 focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 transition-all;
+  }
+
+  .card {
+    @apply bg-white border border-slate-100 rounded-xl shadow-sm;
+  }
 }

@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { Copy, Check, Trash2, Play } from 'lucide-react';
+import { Copy, Check, Trash2, Play, Clock, CalendarDays, History } from 'lucide-react';
 import { getNextExecutions, cronToHuman, validateCron, CRON_EXAMPLES } from '@/utils/cron';
 import { cn } from '@/utils/cn';
 
@@ -36,6 +36,11 @@ function CronParser() {
   const handleUseExample = useCallback((expression: string) => {
     setInput(expression);
     setError(null);
+    // 自动触发解析
+    try {
+        setDescription(cronToHuman(expression));
+        setNextTimes(getNextExecutions(expression, 10));
+    } catch {}
   }, []);
 
   // 复制
@@ -68,118 +73,122 @@ function CronParser() {
   };
 
   return (
-    <div className="h-full flex flex-col p-6 overflow-auto">
-      {/* 标题栏 */}
-      <div className="mb-4">
-        <h2 className="text-xl font-bold text-gray-800">Cron 表达式解析</h2>
-        <p className="text-sm text-gray-500">解析 Cron 表达式，查看执行时间</p>
+    <div className="h-full flex flex-col bg-white">
+       {/* 顶部工具栏 */}
+      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
+            <Clock className="w-5 h-5" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-800">Cron 表达式</h2>
+            <p className="text-xs text-slate-400">解析 Cron 表达式与执行时间预测</p>
+          </div>
+        </div>
+         <div className="flex items-center gap-2">
+            <button onClick={handleParse} className="btn btn-primary bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2">
+                <Play className="w-4 h-4" />
+                <span>解析</span>
+            </button>
+             <button onClick={handleClear} className="btn btn-ghost p-2 text-slate-400 hover:text-red-500">
+                <Trash2 className="w-5 h-5" />
+             </button>
+         </div>
       </div>
 
-      {/* 输入区域 */}
-      <div className="mb-4">
-        <div className="flex gap-2">
-          <input
-            type="text"
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleParse()}
-            placeholder="输入 Cron 表达式，如: 0 0 * * *"
-            className="flex-1 px-4 py-2 border border-gray-300 rounded-lg font-mono text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent"
-          />
-          <button
-            onClick={handleParse}
-            className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 transition-colors text-sm font-medium flex items-center gap-1"
-          >
-            <Play className="w-4 h-4" />
-            解析
-          </button>
-          <button
-            onClick={handleClear}
-            className="px-4 py-2 border border-gray-300 text-gray-700 rounded-lg hover:bg-gray-50 transition-colors text-sm font-medium flex items-center gap-1"
-          >
-            <Trash2 className="w-4 h-4" />
-            清空
-          </button>
-        </div>
-        <p className="mt-2 text-xs text-gray-500">
-          格式: 分 时 日 月 周 (支持 5 位或 6 位表达式)
-        </p>
-      </div>
-
-      {/* 错误提示 */}
-      {error && (
-        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-lg text-red-600 text-sm">
-          {error}
-        </div>
-      )}
-
-      {/* 解析结果 */}
-      {description && (
-        <div className="mb-4 p-4 bg-green-50 border border-green-200 rounded-lg">
-          <div className="flex items-center justify-between">
-            <div>
-              <span className="text-sm text-gray-600">含义: </span>
-              <span className="font-medium text-green-700">{description}</span>
+      <div className="flex-1 overflow-y-auto p-6">
+        <div className="max-w-4xl mx-auto space-y-8">
+            
+            {/* 输入区 */}
+            <div className="space-y-3">
+                 <label className="text-sm font-semibold text-slate-700 ml-1">表达式输入</label>
+                 <div className="relative">
+                    <input
+                        type="text"
+                        value={input}
+                        onChange={(e) => setInput(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleParse()}
+                        placeholder="输入 Cron 表达式，如: 0 0 * * *"
+                        className="w-full px-5 py-4 text-lg font-mono border border-slate-200 rounded-xl shadow-sm focus:outline-none focus:ring-2 focus:ring-purple-500/20 focus:border-purple-500 transition-all text-slate-700 placeholder:text-slate-300"
+                    />
+                 </div>
+                  <div className="flex items-start gap-2 text-xs text-slate-500 px-1">
+                    <span className="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono">Format</span>
+                    <span>分 时 日 月 周 (支持 5 位或 6 位表达式)</span>
+                 </div>
             </div>
-            <button
-              onClick={handleCopy}
-              className="flex items-center gap-1 px-2 py-1 rounded text-sm text-gray-600 hover:bg-green-100"
-            >
-              {copied ? (
-                <>
-                  <Check className="w-4 h-4 text-green-500" />
-                  <span className="text-green-500">已复制</span>
-                </>
-              ) : (
-                <>
-                  <Copy className="w-4 h-4" />
-                  <span>复制</span>
-                </>
-              )}
-            </button>
-          </div>
-        </div>
-      )}
 
-      {/* 下次执行时间 */}
-      {nextTimes.length > 0 && (
-        <div className="mb-4">
-          <h3 className="text-sm font-medium text-gray-700 mb-2">接下来 10 次执行时间</h3>
-          <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
-            <table className="w-full text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-2 text-left text-gray-600 font-medium">序号</th>
-                  <th className="px-4 py-2 text-left text-gray-600 font-medium">执行时间</th>
-                </tr>
-              </thead>
-              <tbody>
-                {nextTimes.map((time, index) => (
-                  <tr key={index} className="border-t border-gray-100">
-                    <td className="px-4 py-2 text-gray-500">{index + 1}</td>
-                    <td className="px-4 py-2 font-mono text-gray-700">{formatDate(time)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      )}
+            {/* 错误提示 */}
+            {error && (
+                <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                    <div className="w-1.5 h-1.5 rounded-full bg-red-500" />
+                    {error}
+                </div>
+            )}
 
-      {/* 常用示例 */}
-      <div className="mt-auto">
-        <h3 className="text-sm font-medium text-gray-700 mb-2">常用表达式</h3>
-        <div className="grid grid-cols-2 gap-2">
-          {CRON_EXAMPLES.map((example, index) => (
-            <button
-              key={index}
-              onClick={() => handleUseExample(example.expression)}
-              className="flex items-center justify-between p-3 bg-white border border-gray-200 rounded-lg hover:border-blue-300 hover:bg-blue-50 transition-colors text-left"
-            >
-              <span className="font-mono text-sm text-blue-600">{example.expression}</span>
-              <span className="text-xs text-gray-500">{example.description}</span>
-            </button>
-          ))}
+            {/* 结果展示区 */}
+            {(description || nextTimes.length > 0) && (
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                    
+                    {/* 左侧：语义描述 */}
+                    <div className="space-y-4">
+                        <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
+                            <CalendarDays className="w-4 h-4 text-purple-500" />
+                            <span>执行规则</span>
+                        </div>
+                        <div className="p-6 bg-purple-50/50 border border-purple-100 rounded-2xl relative group">
+                             <p className="text-lg text-purple-900 font-medium leading-relaxed pr-8">
+                                {description}
+                             </p>
+                             <button
+                                onClick={handleCopy}
+                                className="absolute top-4 right-4 p-2 rounded-lg text-purple-400 hover:text-purple-700 hover:bg-purple-100 transition-colors opacity-0 group-hover:opacity-100"
+                                title="复制描述"
+                             >
+                                {copied ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                             </button>
+                        </div>
+                    </div>
+
+                    {/* 右侧：下次执行时间 */}
+                     <div className="space-y-4">
+                         <div className="flex items-center gap-2 text-slate-800 font-semibold text-sm">
+                            <History className="w-4 h-4 text-purple-500" />
+                            <span>接下来 5 次执行时间</span>
+                        </div>
+                         <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-sm">
+                            <div className="divide-y divide-slate-100">
+                                {nextTimes.slice(0, 5).map((time, index) => (
+                                    <div key={index} className="px-5 py-3 flex items-center justify-between hover:bg-slate-50 transition-colors">
+                                        <span className="text-xs font-medium text-slate-400 w-8">#{index + 1}</span>
+                                        <span className="font-mono text-sm text-slate-600">{formatDate(time)}</span>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+             {/* 常用示例 */}
+             <div className="pt-8 border-t border-slate-100">
+                <h3 className="text-sm font-semibold text-slate-700 mb-4">常用表达式示例</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    {CRON_EXAMPLES.map((example, index) => (
+                        <button
+                        key={index}
+                        onClick={() => handleUseExample(example.expression)}
+                        className="flex flex-col items-start p-3 bg-white border border-slate-200 rounded-xl hover:border-purple-300 hover:shadow-md hover:shadow-purple-100/50 transition-all text-left group"
+                        >
+                        <span className="font-mono text-sm text-purple-600 font-medium bg-purple-50 px-2 py-0.5 rounded mb-1.5 group-hover:bg-purple-100 transition-colors">
+                            {example.expression}
+                        </span>
+                        <span className="text-xs text-slate-500 group-hover:text-slate-600">{example.description}</span>
+                        </button>
+                    ))}
+                </div>
+            </div>
+
         </div>
       </div>
     </div>
