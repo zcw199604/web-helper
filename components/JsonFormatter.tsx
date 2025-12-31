@@ -188,6 +188,12 @@ function JsonFormatter() {
     setQueryInput('$.');
   }, []);
 
+  // 填充 Path 到查询框
+  const handleFillPath = useCallback((path: string) => {
+    setQueryInput(path);
+    setShowQuery(true);
+  }, []);
+
   return (
     <div className="h-full flex flex-col bg-white">
       {/* 顶部工具栏 */}
@@ -427,7 +433,12 @@ function JsonFormatter() {
              ) : (
                  <div className="absolute inset-0 w-full h-full overflow-auto p-4 custom-scrollbar">
                     {displayData ? (
-                        <JsonTree data={displayData} name={showQuery ? "result" : "root"} isLast={true} />
+                        <JsonTree 
+                            data={displayData} 
+                            isLast={true} 
+                            path="$"
+                            onFillPath={handleFillPath}
+                        />
                     ) : (
                         <div className="flex flex-col items-center justify-center h-full text-slate-400">
                              {showQuery ? <Search className="w-8 h-8 mb-2 opacity-50" /> : <Network className="w-8 h-8 mb-2 opacity-50" />}

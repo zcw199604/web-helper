@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from 'react';
-import { ChevronRight, ChevronDown, Copy, Download, Check, FileJson } from 'lucide-react';
+import { useState } from 'react';
+import { ChevronRight, ChevronDown, Copy, Download, Check, CornerLeftUp } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 interface JsonTreeProps {
@@ -8,6 +8,8 @@ interface JsonTreeProps {
   isLast?: boolean;
   level?: number;
   initiallyExpanded?: boolean;
+  path?: string;
+  onFillPath?: (path: string) => void;
 }
 
 // 简单的类型判断
@@ -30,7 +32,15 @@ const downloadJson = (data: any, fileName: string) => {
   URL.revokeObjectURL(url);
 };
 
-export function JsonTree({ data, name, isLast = true, level = 0, initiallyExpanded = true }: JsonTreeProps) {
+export function JsonTree({ 
+  data, 
+  name, 
+  isLast = true, 
+  level = 0, 
+  initiallyExpanded = true,
+  path = '$',
+  onFillPath
+}: JsonTreeProps) {
   const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
   const [copied, setCopied] = useState(false);
   const type = getType(data);
@@ -52,6 +62,12 @@ export function JsonTree({ data, name, isLast = true, level = 0, initiallyExpand
     downloadJson(data, fileName);
   };
 
+  // 处理填充 Path
+  const handleFillPath = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onFillPath?.(path);
+  };
+
   const renderValue = (val: any) => {
     const valType = getType(val);
     switch (valType) {
@@ -68,14 +84,31 @@ export function JsonTree({ data, name, isLast = true, level = 0, initiallyExpand
     }
   };
 
+  // 非对象类型 (叶子节点)
   if (!isObject) {
     return (
-      <div className="flex items-start hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5 font-mono text-sm leading-6">
-        <div style={{ paddingLeft: `${level * 20}px` }} className="flex-1 break-all">
-          {name && <span className="text-purple-700 font-medium">"{name}"</span>}
-          {name && <span className="text-slate-500 mr-2">:</span>}
-          {renderValue(data)}
-          {!isLast && <span className="text-slate-500">,</span>}
+      <div className="flex items-start hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5 font-mono text-sm leading-6 group">
+        <div style={{ paddingLeft: `${level * 20}px` }} className="flex-1 break-all flex items-center">
+           <div className="flex-1">
+              {name && <span className="text-purple-700 font-medium">"{name}"</span>}
+              {name && <span className="text-slate-500 mr-2">:</span>}
+              {renderValue(data)}
+              {!isLast && <span className="text-slate-500">,</span>}
+           </div>
+
+           {/* 叶子节点也添加操作按钮 */}
+            {onFillPath && (
+                <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity px-2">
+                     <button
+                        onClick={handleFillPath}
+                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
+                        title="填充 JSONPath"
+                        >
+                        <CornerLeftUp className="w-3.5 h-3.5" />
+                    </button>
+                    {/* 叶子节点通常不需要单独下载/复制整个对象，但如果用户需要也可以加上，这里主要响应 Fill Path 需求 */}
+                </div>
+            )}
         </div>
       </div>
     );
@@ -127,6 +160,15 @@ export function JsonTree({ data, name, isLast = true, level = 0, initiallyExpand
 
         {/* 操作按钮 (仅在 hover 时显示，且非空对象) */}
         <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity px-2">
+            {onFillPath && (
+                 <button
+                    onClick={handleFillPath}
+                    className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
+                    title="填充 JSONPath"
+                 >
+                    <CornerLeftUp className="w-3.5 h-3.5" />
+                 </button>
+            )}
             <button
               onClick={handleCopy}
               className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
@@ -147,16 +189,29 @@ export function JsonTree({ data, name, isLast = true, level = 0, initiallyExpand
       {/* 子节点 */}
       {isExpanded && !isEmpty && (
         <div>
-          {keys.map((key, index) => (
-            <JsonTree
-              key={key}
-              name={type === 'array' ? undefined : key}
-              data={data[key]}
-              isLast={index === keys.length - 1}
-              level={level + 1}
-              initiallyExpanded={initiallyExpanded}
-            />
-          ))}
+          {keys.map((key, index) => {
+             // 构造子节点的 Path
+             const isSimpleKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
+             let childPath = path;
+             if (type === 'array') {
+                childPath = `${path}[${index}]`;
+             } else {
+                childPath = isSimpleKey ? `${path}.${key}` : `${path}['${key}']`;
+             }
+
+             return (
+                <JsonTree
+                key={key}
+                name={type === 'array' ? undefined : key}
+                data={data[key]}
+                isLast={index === keys.length - 1}
+                level={level + 1}
+                initiallyExpanded={initiallyExpanded}
+                path={childPath}
+                onFillPath={onFillPath}
+                />
+             );
+          })}
           <div 
              className="hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5"
              style={{ paddingLeft: `${level * 20 + 20}px` }}
