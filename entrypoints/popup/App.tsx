@@ -1,4 +1,4 @@
-import { FileJson, KeyRound, Link, Clock, Binary, ChevronRight } from 'lucide-react';
+import { FileJson, KeyRound, Link, Clock, Binary, ChevronRight, Settings2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 // 工具列表配置
@@ -13,22 +13,13 @@ const tools = [
     borderColor: 'group-hover:border-amber-200',
   },
   {
-    id: 'base64',
-    name: 'Base64 转换',
-    description: '文本与 Base64 互转',
-    icon: Binary,
-    color: 'text-blue-600',
-    bgColor: 'bg-blue-50',
-    borderColor: 'group-hover:border-blue-200',
-  },
-  {
-    id: 'url',
-    name: 'URL 编解码',
-    description: 'URL 编码与解码',
-    icon: Link,
-    color: 'text-emerald-600',
-    bgColor: 'bg-emerald-50',
-    borderColor: 'group-hover:border-emerald-200',
+    id: 'encoding',
+    name: '编码转换',
+    description: 'Base64 / URL 编解码',
+    icon: Settings2,
+    color: 'text-indigo-600',
+    bgColor: 'bg-indigo-50',
+    borderColor: 'group-hover:border-indigo-200',
   },
   {
     id: 'cron',
@@ -114,7 +105,7 @@ function App() {
       {/* 底部 */}
       <div className="p-3 text-center">
         <p className="text-[10px] text-slate-400 font-medium">
-          v1.0.0 · Developer Toolbox
+          v1.2.2 · Developer Toolbox
         </p>
       </div>
     </div>

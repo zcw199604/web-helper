@@ -1,21 +1,23 @@
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { FileJson, KeyRound, Link, Clock, Binary, Settings } from 'lucide-react';
+import { FileJson, KeyRound, Link, Clock, Binary, Settings, Settings2, Network, FileText } from 'lucide-react';
 import { cn } from '@/utils/cn';
 
 // 导入工具组件
 import JsonFormatter from '@/components/JsonFormatter';
-import Base64Tool from '@/components/Base64Tool';
-import UrlEncoder from '@/components/UrlEncoder';
+import EncodingTools from '@/components/EncodingTools';
 import CronParser from '@/components/CronParser';
 import JwtDecoder from '@/components/JwtDecoder';
+import ApiTester from '@/components/ApiTester';
+import CurlToMarkdown from '@/components/CurlToMarkdown';
 
 // 导航菜单配置
 const navItems = [
   { path: '/json', name: 'JSON 格式化', icon: FileJson },
-  { path: '/base64', name: 'Base64 转换', icon: Binary },
-  { path: '/url', name: 'URL 编解码', icon: Link },
+  { path: '/encoding', name: '编码转换', icon: Settings2 },
   { path: '/cron', name: 'Cron 表达式', icon: Clock },
   { path: '/jwt', name: 'JWT 解码', icon: KeyRound },
+  { path: '/api-tester', name: 'API 调试', icon: Network },
+  { path: '/curl-to-md', name: 'cURL → Markdown', icon: FileText },
 ];
 
 function App() {
@@ -87,10 +89,11 @@ function App() {
               <Routes>
                 <Route path="/" element={<Navigate to="/json" replace />} />
                 <Route path="/json" element={<JsonFormatter />} />
-                <Route path="/base64" element={<Base64Tool />} />
-                <Route path="/url" element={<UrlEncoder />} />
+                <Route path="/encoding" element={<EncodingTools />} />
                 <Route path="/cron" element={<CronParser />} />
                 <Route path="/jwt" element={<JwtDecoder />} />
+                <Route path="/api-tester" element={<ApiTester />} />
+                <Route path="/curl-to-md" element={<CurlToMarkdown />} />
               </Routes>
             </div>
           </div>

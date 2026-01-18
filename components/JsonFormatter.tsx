@@ -16,6 +16,7 @@ function JsonFormatter() {
   const [showQuery, setShowQuery] = useState(false);
   const [queryInput, setQueryInput] = useState('$.');
   const [queryError, setQueryError] = useState<string | null>(null);
+  const [autoClearQuery, setAutoClearQuery] = useState(true);
   
   // 自动补全相关状态
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -42,6 +43,17 @@ function JsonFormatter() {
       return null;
     }
   }, [output]);
+
+  // 当 input 变化时，如果 autoClearQuery 为 true，重置查询
+  // 为了避免初始渲染或微小变动都重置，我们只在 input 存在且发生变化时触发
+  // 这里简化逻辑：只要 input 变了，且 autoClearQuery 开着，就重置。
+  useEffect(() => {
+     if (autoClearQuery && input) {
+         setQueryInput('$.');
+         // 可选：如果希望重置后关闭查询栏，取消下面注释
+         // setShowQuery(false); 
+     }
+  }, [input, autoClearQuery]);
 
   // 处理内容更新（包含格式化和查询逻辑）
   const updateOutput = useCallback((currentInput: string, currentIndent: number, isQueryActive: boolean, currentQuery: string) => {
@@ -221,6 +233,16 @@ function JsonFormatter() {
                 <option value={4}>4 空格</option>
                 <option value={1}>1 Tab</option>
                 </select>
+                <div className="w-px h-4 bg-slate-200 mx-1"></div>
+                <label className="flex items-center gap-1.5 cursor-pointer text-xs select-none" title="重新输入 JSON 时自动清空查询条件">
+                    <input 
+                        type="checkbox" 
+                        checked={autoClearQuery}
+                        onChange={(e) => setAutoClearQuery(e.target.checked)}
+                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                    />
+                    <span className="text-slate-500">重置查询</span>
+                </label>
             </div>
             
             <div className="h-6 w-px bg-slate-200 mx-1" />

@@ -1,51 +1,70 @@
 import { useState, useCallback } from 'react';
-import { Copy, Check, Trash2, ArrowDownUp, Link, ArrowRightLeft, List } from 'lucide-react';
+import { Copy, Check, Trash2, ArrowDownUp, Binary, Link, List, Settings2 } from 'lucide-react';
+import { encodeBase64, decodeBase64, isValidBase64 } from '@/utils/base64';
 import { encodeUrl, decodeUrl, parseQueryParams } from '@/utils/url';
 import { cn } from '@/utils/cn';
 
-function UrlEncoder() {
+function EncodingTools() {
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [mode, setMode] = useState<'encode' | 'decode'>('encode');
+  
+  // URL 参数相关状态
   const [params, setParams] = useState<Record<string, string>>({});
   const [showParams, setShowParams] = useState(false);
 
-  // 执行转换
-  const handleConvert = useCallback(() => {
+  // 通用处理函数
+  const handleAction = useCallback((action: (val: string) => string, validate?: (val: string) => boolean, errorMsg?: string) => {
     if (!input.trim()) {
       setError('请输入内容');
       return;
     }
+    if (validate && !validate(input)) {
+      setError(errorMsg || '输入格式无效');
+      return;
+    }
     try {
-      if (mode === 'encode') {
-        setOutput(encodeUrl(input));
-      } else {
-        const decoded = decodeUrl(input);
-        setOutput(decoded);
-        // 尝试自动解析参数
-        try {
-           const parsed = parseQueryParams(decoded);
-           if (Object.keys(parsed).length > 0) {
-             setParams(parsed);
-             setShowParams(true);
-           } else {
-             setShowParams(false);
-           }
-        } catch {}
-      }
+      const result = action(input);
+      setOutput(result);
       setError(null);
+      // 如果是 URL 操作，顺便尝试解析参数，但不强制显示
+      // 如果不是 URL 操作，隐藏参数面板
+      setShowParams(false); 
     } catch (e) {
       setError((e as Error).message);
     }
-  }, [input, mode]);
+  }, [input]);
 
-  // 手动解析参数
+  // Base64
+  const handleBase64Encode = () => handleAction(encodeBase64);
+  const handleBase64Decode = () => handleAction(decodeBase64, isValidBase64, '无效的 Base64 字符串');
+
+  // URL
+  const handleUrlEncode = () => handleAction(encodeUrl);
+  const handleUrlDecode = () => {
+      handleAction((val) => {
+          const res = decodeUrl(val);
+          // 尝试自动解析参数
+          try {
+            const parsed = parseQueryParams(res);
+            if (Object.keys(parsed).length > 0) {
+                setParams(parsed);
+                // 这里可以选择是否自动展开，暂不自动展开以免干扰，除非是专门点了解析
+            }
+          } catch {}
+          return res;
+      });
+  };
+
+  // 单独解析 URL 参数
   const handleParseParams = useCallback(() => {
     if (!input.trim()) return;
     try {
-      const parsed = parseQueryParams(input);
+      // 优先解析 output，如果没有 output 则解析 input
+      // 实际上用户可能想解析输入框里的 URL
+      const target = input; 
+      const parsed = parseQueryParams(target);
       setParams(parsed);
       setShowParams(true);
       setError(null);
@@ -54,14 +73,13 @@ function UrlEncoder() {
     }
   }, [input]);
 
-  // 交换输入输出
+  // 交换
   const handleSwap = useCallback(() => {
     setInput(output);
     setOutput('');
-    setMode(mode === 'encode' ? 'decode' : 'encode');
     setError(null);
     setShowParams(false);
-  }, [output, mode]);
+  }, [output]);
 
   // 复制
   const handleCopy = useCallback(async () => {
@@ -83,67 +101,72 @@ function UrlEncoder() {
   return (
     <div className="h-full flex flex-col bg-white">
       {/* 顶部工具栏 */}
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-emerald-50 rounded-lg text-emerald-600">
-            <Link className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-800">URL 编解码</h2>
-            <p className="text-xs text-slate-400">URL 编码、解码与参数解析</p>
+      <div className="px-6 py-4 border-b border-slate-100 flex flex-col gap-4 bg-white sticky top-0 z-10">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
+              <Settings2 className="w-5 h-5" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-slate-800">编码转换</h2>
+              <p className="text-xs text-slate-400">Base64 / URL 编码与解码</p>
+            </div>
           </div>
         </div>
 
-        <div className="flex items-center gap-3">
-          <div className="flex bg-slate-100 p-1 rounded-lg">
-             <button
-              onClick={() => setMode('encode')}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                mode === 'encode'
-                  ? 'bg-white text-emerald-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              编码
-            </button>
-            <button
-              onClick={() => setMode('decode')}
-              className={cn(
-                'px-3 py-1.5 rounded-md text-xs font-medium transition-all',
-                mode === 'decode'
-                  ? 'bg-white text-emerald-600 shadow-sm'
-                  : 'text-slate-500 hover:text-slate-700'
-              )}
-            >
-              解码
-            </button>
+        {/* 操作按钮组 */}
+        <div className="flex flex-wrap items-center gap-3">
+          
+          {/* Base64 Group */}
+          <div className="flex items-center bg-slate-50 p-1 rounded-lg border border-slate-200">
+             <div className="px-2 text-xs font-semibold text-slate-400 flex items-center gap-1">
+                <Binary className="w-3.5 h-3.5" />
+                Base64
+             </div>
+             <div className="w-px h-4 bg-slate-200 mx-1"></div>
+             <button onClick={handleBase64Encode} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
+                编码
+             </button>
+             <button onClick={handleBase64Decode} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
+                解码
+             </button>
+          </div>
+
+          {/* URL Group */}
+          <div className="flex items-center bg-slate-50 p-1 rounded-lg border border-slate-200">
+             <div className="px-2 text-xs font-semibold text-slate-400 flex items-center gap-1">
+                <Link className="w-3.5 h-3.5" />
+                URL
+             </div>
+             <div className="w-px h-4 bg-slate-200 mx-1"></div>
+             <button onClick={handleUrlEncode} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-emerald-600 hover:bg-white rounded-md transition-all">
+                编码
+             </button>
+             <button onClick={handleUrlDecode} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-emerald-600 hover:bg-white rounded-md transition-all">
+                解码
+             </button>
           </div>
 
           <div className="h-6 w-px bg-slate-200 mx-1" />
 
-          <button onClick={handleConvert} className="btn btn-primary gap-2 bg-emerald-600 hover:bg-emerald-700 focus:ring-emerald-500">
-            <ArrowRightLeft className="w-4 h-4" />
-            <span>{mode === 'encode' ? '编码' : '解码'}</span>
-          </button>
-
           <button 
             onClick={handleParseParams} 
-            className="btn btn-secondary gap-2"
+            className="btn btn-secondary gap-2 px-3 py-1.5 text-xs"
             title="解析 URL 参数"
           >
             <List className="w-4 h-4" />
             <span className="hidden sm:inline">参数</span>
           </button>
-          
-           <button 
+
+          <button 
             onClick={handleSwap} 
             disabled={!output}
-            className="btn btn-secondary gap-2"
+            className="btn btn-secondary gap-2 px-3 py-1.5 text-xs"
+            title="交换输入输出"
           >
             <ArrowDownUp className="w-4 h-4" />
           </button>
-
+          
           <button onClick={handleClear} className="btn btn-ghost p-2 text-slate-400 hover:text-red-500">
             <Trash2 className="w-5 h-5" />
           </button>
@@ -170,15 +193,15 @@ function UrlEncoder() {
           <textarea
             value={input}
             onChange={(e) => setInput(e.target.value)}
-            placeholder="在此输入 URL..."
+            placeholder="在此输入文本或 URL..."
             className="flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none focus:bg-white transition-colors custom-scrollbar leading-relaxed"
           />
         </div>
 
         {/* 输出区 */}
-        <div className="flex flex-col h-full bg-white relative">
+        <div className="flex flex-col h-full bg-white relative group">
           <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-white">
-             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output</span>
+            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output</span>
             <button
               onClick={handleCopy}
               disabled={!output}
@@ -209,7 +232,7 @@ function UrlEncoder() {
                 readOnly
                 placeholder="结果..."
                 className={cn(
-                    "flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none custom-scrollbar leading-relaxed selection:bg-emerald-100 selection:text-emerald-900",
+                    "flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none custom-scrollbar leading-relaxed selection:bg-indigo-100 selection:text-indigo-900",
                     showParams ? "h-1/2 border-b border-slate-100" : "h-full"
                 )}
               />
@@ -240,4 +263,4 @@ function UrlEncoder() {
   );
 }
 
-export default UrlEncoder;
+export default EncodingTools;
