@@ -9,7 +9,7 @@ import type { NameValuePair, ParsedBody, ParsedCurlRequest } from './curl';
 export type ExampleCodeFormat = 'none' | 'curl' | 'fetch' | 'both';
 
 export interface BuildMarkdownOptions {
-  originalCurl?: string;
+  originalRequest?: { kind: 'curl' | 'fetch'; text: string };
   exampleCode?: ExampleCodeFormat;
   responseBody?: string;
 }
@@ -66,12 +66,23 @@ export function buildRequestMarkdown(request: ParsedCurlRequest, options: BuildM
       lines.push('');
     }
 
-    if (options.originalCurl && (exampleCode === 'curl' || exampleCode === 'both')) {
-      lines.push('### 原始 cURL（DevTools）');
-      lines.push('```bash');
-      lines.push(options.originalCurl.trim());
-      lines.push('```');
-      lines.push('');
+    const original = options.originalRequest;
+    if (original?.text) {
+      if (original.kind === 'curl' && (exampleCode === 'curl' || exampleCode === 'both')) {
+        lines.push('### 原始 cURL（DevTools）');
+        lines.push('```bash');
+        lines.push(original.text.trim());
+        lines.push('```');
+        lines.push('');
+      }
+
+      if (original.kind === 'fetch' && (exampleCode === 'fetch' || exampleCode === 'both')) {
+        lines.push('### 原始 fetch（DevTools）');
+        lines.push('```js');
+        lines.push(original.text.trim());
+        lines.push('```');
+        lines.push('');
+      }
     }
   }
 

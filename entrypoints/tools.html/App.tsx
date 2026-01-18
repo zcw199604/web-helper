@@ -17,7 +17,7 @@ const navItems = [
   { path: '/cron', name: 'Cron 表达式', icon: Clock },
   { path: '/jwt', name: 'JWT 解码', icon: KeyRound },
   { path: '/api-tester', name: 'API 调试', icon: Network },
-  { path: '/curl-to-md', name: 'cURL → Markdown', icon: FileText },
+  { path: '/curl-to-md', name: 'cURL / fetch → Markdown', icon: FileText },
 ];
 
 function App() {

@@ -13,6 +13,7 @@
 | 202601190216 | curl_to_md_response | 变更 | ✅已完成 | [2026-01/202601190216_curl_to_md_response](2026-01/202601190216_curl_to_md_response/) |
 | 202601190222 | curl_to_md_remove_field_desc | 变更 | ✅已完成 | [2026-01/202601190222_curl_to_md_remove_field_desc](2026-01/202601190222_curl_to_md_remove_field_desc/) |
 | 202601190228 | curl_to_md_editable_output | 变更 | ✅已完成 | [2026-01/202601190228_curl_to_md_editable_output](2026-01/202601190228_curl_to_md_editable_output/) |
+| 202601190245 | curl_to_md_fetch | 变更 | ✅已完成 | [2026-01/202601190245_curl_to_md_fetch](2026-01/202601190245_curl_to_md_fetch/) |
 
 ---
 
@@ -25,3 +26,4 @@
 - [202601190216_curl_to_md_response](2026-01/202601190216_curl_to_md_response/) - cURL → Markdown 响应输入与条件输出
 - [202601190222_curl_to_md_remove_field_desc](2026-01/202601190222_curl_to_md_remove_field_desc/) - cURL → Markdown 移除字段说明
 - [202601190228_curl_to_md_editable_output](2026-01/202601190228_curl_to_md_editable_output/) - cURL → Markdown 输出可编辑
+- [202601190245_curl_to_md_fetch](2026-01/202601190245_curl_to_md_fetch/) - cURL → Markdown 支持解析 Copy as fetch

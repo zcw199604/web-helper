@@ -1,13 +1,13 @@
 /**
- * cURL → Markdown 工具页
+ * cURL / fetch → Markdown 工具页
  *
- * 粘贴 DevTools「Copy as cURL」与可选响应内容，生成 Markdown 接口文档并支持复制/下载。
+ * 粘贴 DevTools「Copy as cURL / Copy as fetch」与可选响应内容，生成 Markdown 接口文档并支持复制/下载。
  */
 
 import { useCallback, useEffect, useState } from 'react';
 import { AlertTriangle, Check, Copy, Download, FileText, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
-import { parseCurlCommand } from '@/utils/curl';
+import { parseRequestSnippet } from '@/utils/request';
 import { buildRequestMarkdown, suggestMarkdownFileName, type ExampleCodeFormat } from '@/utils/markdown';
 
 interface RequestMeta {
@@ -33,7 +33,7 @@ function CurlToMarkdown() {
       return;
     }
 
-    const result = parseCurlCommand(text);
+    const result = parseRequestSnippet(text);
     if (!result.ok) {
       setMarkdown('');
       setMeta(null);
@@ -45,7 +45,7 @@ function CurlToMarkdown() {
     setMeta({ method: result.request.method, url: result.request.url });
     setMarkdown(
       buildRequestMarkdown(result.request, {
-        originalCurl: text,
+        originalRequest: { kind: result.kind, text },
         exampleCode,
         responseBody: response.trim() ? response : undefined,
       })
@@ -98,8 +98,8 @@ function CurlToMarkdown() {
               <FileText className="w-5 h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-base font-bold text-slate-800">cURL → Markdown</h2>
-              <p className="text-xs text-slate-400">粘贴 DevTools「Copy as cURL」，生成接口文档</p>
+              <h2 className="text-base font-bold text-slate-800">cURL / fetch → Markdown</h2>
+              <p className="text-xs text-slate-400">粘贴 DevTools「Copy as cURL / Copy as fetch」，生成接口文档</p>
             </div>
           </div>
 
@@ -156,13 +156,13 @@ function CurlToMarkdown() {
         <div className="flex flex-col h-full bg-slate-50/30">
           <div className="flex flex-col flex-[2] min-h-0">
             <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Request (cURL)</span>
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Request (cURL / fetch)</span>
               <span className="text-xs text-slate-400">{input.length} chars</span>
             </div>
             <textarea
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="粘贴 DevTools Network → Copy as cURL 的内容..."
+              placeholder="粘贴 DevTools Network → Copy as cURL / Copy as fetch 的内容..."
               className="flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none focus:bg-white transition-colors custom-scrollbar leading-relaxed"
             />
           </div>

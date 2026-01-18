@@ -8,4 +8,6 @@ export * from './url';
 export * from './cron';
 export * from './jwt';
 export * from './curl';
+export * from './fetch';
+export * from './request';
 export * from './markdown';

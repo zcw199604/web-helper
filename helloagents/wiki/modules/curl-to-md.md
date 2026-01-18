@@ -1,10 +1,10 @@
-# cURL → Markdown
+# cURL / fetch → Markdown
 
 ## 目的
-将浏览器 DevTools Network 的「Copy as cURL」文本转换为 Markdown 接口文档（含请求信息、参数/头/Body、示例代码、响应与字段说明占位）。
+将浏览器 DevTools Network 的「Copy as cURL / Copy as fetch」文本转换为 Markdown 接口文档（含请求信息、参数/头/Body、示例代码、响应示例）。
 
 ## 模块概述
-- **职责:** cURL 文本解析 → 结构化请求 → Markdown 生成 → 预览/复制/下载
+- **职责:** cURL / fetch 文本解析 → 结构化请求 → Markdown 生成 → 预览/复制/下载
 - **状态:** ✅稳定
 - **最后更新:** 2026-01-19
 
@@ -13,6 +13,10 @@
 - 解析需兼容 DevTools「Copy as cURL」的常见复制样式：
   - Windows CMD：多行 + `^` 换行/引号转义
   - Bash：多行 + `\` 换行
+- 解析需支持 DevTools「Copy as fetch」格式：
+  - 形如 `fetch("https://...", { ... })` 的代码片段
+  - URL 需为字符串字面量
+  - init 对象为 JSON 风格（双引号 key/value；允许尾逗号会被容错处理）
 - Markdown 输出固定包含：
   - 请求行（Method + URL）
   - Query 参数表、Headers 表
@@ -27,6 +31,8 @@
 ## 关键文件
 - `components/CurlToMarkdown.tsx`
 - `utils/curl.ts`
+- `utils/fetch.ts`
+- `utils/request.ts`
 - `utils/markdown.ts`
 - `entrypoints/tools.html/App.tsx`
 

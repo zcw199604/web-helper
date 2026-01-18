@@ -6,12 +6,11 @@
 
 ## [Unreleased]
 
-## [Unreleased]
-
 ### 变更
 - cURL → Markdown：示例代码默认不生成，可配置生成格式，并移动到文档末尾
 - cURL → Markdown：支持输入响应内容；未提供响应则不输出“响应示例”；移除“字段说明”段落
 - cURL → Markdown：生成的 Markdown 可编辑，复制/下载使用编辑后的内容
+- cURL → Markdown：支持解析 DevTools「Copy as fetch」文本（fetch → Markdown）
 
 ## [1.3.0] - 2026-01-19
 
