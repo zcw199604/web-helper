@@ -22,6 +22,7 @@ Web Helper 是一个浏览器 DevTools 工具箱扩展，提供常用开发辅�
 
 | 模块名称 | 职责 | 状态 | 文档 |
 |---------|------|------|------|
+| 扩展弹窗（Popup） | Popup 快捷菜单与跳转 | ✅稳定 | [modules/popup.md](modules/popup.md) |
 | 工具面板（DevTools） | 工具箱壳、路由与导航 | ✅稳定 | [modules/tools-panel.md](modules/tools-panel.md) |
 | JSON 格式化 | JSON 格式化/压缩/查询 | ✅稳定 | [modules/json-formatter.md](modules/json-formatter.md) |
 | 编码转换 | Base64/URL 编解码等 | ✅稳定 | [modules/encoding-tools.md](modules/encoding-tools.md) |

@@ -1,47 +1,11 @@
-import { FileJson, KeyRound, Link, Clock, Binary, ChevronRight, Settings2 } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { cn } from '@/utils/cn';
-
-// 工具列表配置
-const tools = [
-  {
-    id: 'json',
-    name: 'JSON 格式化',
-    description: '格式化、压缩、验证 JSON',
-    icon: FileJson,
-    color: 'text-amber-600',
-    bgColor: 'bg-amber-50',
-    borderColor: 'group-hover:border-amber-200',
-  },
-  {
-    id: 'encoding',
-    name: '编码转换',
-    description: 'Base64 / URL 编解码',
-    icon: Settings2,
-    color: 'text-indigo-600',
-    bgColor: 'bg-indigo-50',
-    borderColor: 'group-hover:border-indigo-200',
-  },
-  {
-    id: 'cron',
-    name: 'Cron 表达式',
-    description: '解析 Cron 定时表达式',
-    icon: Clock,
-    color: 'text-purple-600',
-    bgColor: 'bg-purple-50',
-    borderColor: 'group-hover:border-purple-200',
-  },
-  {
-    id: 'jwt',
-    name: 'JWT 解码',
-    description: '解析 JWT Token',
-    icon: KeyRound,
-    color: 'text-rose-600',
-    bgColor: 'bg-rose-50',
-    borderColor: 'group-hover:border-rose-200',
-  },
-];
+import { resolveToolModulesByIds } from '@/utils/tool-modules';
+import { popupVisibleToolIds } from '@/utils/ui-config';
 
 function App() {
+  const tools = resolveToolModulesByIds(popupVisibleToolIds);
+
   // 打开独立工具页面
   const openToolsPage = (toolId?: string) => {
     const url = toolId
@@ -85,7 +49,13 @@ function App() {
                 'text-left relative overflow-hidden'
               )}
             >
-              <div className={cn('p-2.5 rounded-lg transition-colors duration-200', tool.bgColor, tool.color)}>
+              <div
+                className={cn(
+                  'p-2.5 rounded-lg transition-colors duration-200',
+                  tool.popupStyle.bgColor,
+                  tool.popupStyle.color
+                )}
+              >
                 <Icon className="w-5 h-5" strokeWidth={2} />
               </div>
               <div className="flex-1 min-w-0">

@@ -5,10 +5,11 @@
  */
 
 import { useCallback, useEffect, useState } from 'react';
-import { AlertTriangle, Check, Copy, Download, FileText, Trash2 } from 'lucide-react';
+import { AlertTriangle, Check, Code2, Copy, Download, Eye, FileText, Trash2 } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { parseRequestSnippet } from '@/utils/request';
 import { buildRequestMarkdown, suggestMarkdownFileName, type ExampleCodeFormat } from '@/utils/markdown';
+import { MarkdownPreview } from '@/components/ui/MarkdownPreview';
 
 interface RequestMeta {
   method: string;
@@ -23,6 +24,7 @@ function CurlToMarkdown() {
   const [copied, setCopied] = useState(false);
   const [meta, setMeta] = useState<RequestMeta | null>(null);
   const [exampleCode, setExampleCode] = useState<ExampleCodeFormat>('none');
+  const [viewMode, setViewMode] = useState<'code' | 'preview'>('code');
 
   const generate = useCallback(() => {
     const text = input.trim();
@@ -151,7 +153,7 @@ function CurlToMarkdown() {
       </div>
 
       {/* 主编辑区 */}
-      <div className="flex-1 grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
+        <div className="flex-1 grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
         {/* 输入区 */}
         <div className="flex flex-col h-full bg-slate-50/30">
           <div className="flex flex-col flex-[2] min-h-0">
@@ -184,17 +186,54 @@ function CurlToMarkdown() {
         {/* 输出区 */}
         <div className="flex flex-col h-full">
           <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-white">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Markdown</span>
+            <div className="flex items-center gap-3">
+              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Markdown</span>
+              <div className="flex items-center p-1 bg-slate-100 rounded-lg">
+                <button
+                  onClick={() => setViewMode('code')}
+                  className={cn(
+                    'p-1.5 rounded-md text-slate-500 transition-all',
+                    viewMode === 'code' ? 'bg-white text-indigo-600 shadow-sm' : 'hover:text-slate-700'
+                  )}
+                  title="编辑 Markdown"
+                >
+                  <Code2 className="w-4 h-4" />
+                </button>
+                <button
+                  onClick={() => setViewMode('preview')}
+                  className={cn(
+                    'p-1.5 rounded-md text-slate-500 transition-all',
+                    viewMode === 'preview' ? 'bg-white text-indigo-600 shadow-sm' : 'hover:text-slate-700'
+                  )}
+                  title="渲染预览"
+                >
+                  <Eye className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
             <span className="text-xs text-slate-400">{markdown.length} chars</span>
           </div>
-          <textarea
-            value={markdown}
-            onChange={(e) => setMarkdown(e.target.value)}
-            placeholder="生成的 Markdown 文档..."
-            className={cn(
-              'flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none custom-scrollbar leading-relaxed selection:bg-indigo-100 selection:text-indigo-900'
-            )}
-          />
+          {viewMode === 'code' ? (
+            <textarea
+              value={markdown}
+              onChange={(e) => setMarkdown(e.target.value)}
+              placeholder="生成的 Markdown 文档..."
+              className={cn(
+                'flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none custom-scrollbar leading-relaxed selection:bg-indigo-100 selection:text-indigo-900'
+              )}
+              spellCheck={false}
+            />
+          ) : (
+            <div className="flex-1 overflow-auto p-4 bg-white custom-scrollbar">
+              {markdown ? (
+                <MarkdownPreview markdown={markdown} />
+              ) : (
+                <div className="h-full flex items-center justify-center text-slate-400 text-sm">
+                  暂无 Markdown 内容
+                </div>
+              )}
+            </div>
+          )}
         </div>
       </div>
     </div>

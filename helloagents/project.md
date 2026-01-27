@@ -24,6 +24,8 @@
 ### 业务与工具模块
 - `components/*`：各工具页面组件（每个工具尽量自包含，纯逻辑下沉到 `utils/`）
 - `utils/*`：通用纯函数工具（JSON、URL、JWT、Cron 等）
+- `utils/tool-modules.ts`：工具模块注册表（面板菜单与 Popup 菜单共用）
+- `utils/ui-config.ts`：UI 配置（如 Popup 菜单展示白名单）
 - `components/ui/*`：通用 UI 组件（按钮、Tree 视图等）
 
 ---
@@ -46,4 +48,3 @@
 - 本地开发：`npm run dev`
 - 类型检查：`npm run compile`
 - 构建：`npm run build`
-

@@ -6,7 +6,11 @@
 
 ## [Unreleased]
 
+### 新增
+- cURL / fetch → Markdown：支持 Markdown 渲染预览（下载前检查排版）
+
 ### 变更
+- Popup 菜单：支持通过 `popupVisibleToolIds` 配置展示模块，并与面板共用工具注册表避免不一致
 - cURL → Markdown：示例代码默认不生成，可配置生成格式，并移动到文档末尾
 - cURL → Markdown：支持输入响应内容；未提供响应则不输出“响应示例”；移除“字段说明”段落
 - cURL → Markdown：生成的 Markdown 可编辑，复制/下载使用编辑后的内容

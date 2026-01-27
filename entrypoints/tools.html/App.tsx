@@ -1,6 +1,7 @@
 import { Routes, Route, NavLink, Navigate } from 'react-router-dom';
-import { FileJson, KeyRound, Link, Clock, Binary, Settings, Settings2, Network, FileText } from 'lucide-react';
+import { Settings } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import { TOOL_MODULES } from '@/utils/tool-modules';
 
 // 导入工具组件
 import JsonFormatter from '@/components/JsonFormatter';
@@ -11,14 +12,11 @@ import ApiTester from '@/components/ApiTester';
 import CurlToMarkdown from '@/components/CurlToMarkdown';
 
 // 导航菜单配置
-const navItems = [
-  { path: '/json', name: 'JSON 格式化', icon: FileJson },
-  { path: '/encoding', name: '编码转换', icon: Settings2 },
-  { path: '/cron', name: 'Cron 表达式', icon: Clock },
-  { path: '/jwt', name: 'JWT 解码', icon: KeyRound },
-  { path: '/api-tester', name: 'API 调试', icon: Network },
-  { path: '/curl-to-md', name: 'cURL / fetch → Markdown', icon: FileText },
-];
+const navItems = TOOL_MODULES.map((tool) => ({
+  path: `/${tool.id}`,
+  name: tool.name,
+  icon: tool.icon,
+}));
 
 function App() {
   return (
