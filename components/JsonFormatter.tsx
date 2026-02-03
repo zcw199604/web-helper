@@ -506,7 +506,7 @@ function JsonFormatter() {
       )}
 
       {/* 主编辑区 */}
-      <ToolMain className="grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
+      <ToolMain className="grid grid-cols-1 grid-rows-2 2xl:grid-cols-2 2xl:grid-rows-1 divide-y 2xl:divide-y-0 2xl:divide-x divide-slate-100 min-h-0 overflow-hidden">
         {/* 输入区 */}
         <div className="flex flex-col h-full bg-slate-50/30">
           <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">

@@ -23,7 +23,7 @@ function App() {
     <div className="h-screen w-screen overflow-hidden bg-slate-50 flex flex-col text-slate-900">
       {/* 顶部栏 */}
       <header className="bg-white/90 backdrop-blur-sm border-b border-slate-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="max-w-screen-2xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center h-16 gap-3">
             <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-semibold shadow-sm">
               W
@@ -36,7 +36,7 @@ function App() {
         </div>
       </header>
 
-      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+      <div className="flex-1 min-h-0 max-w-screen-2xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
         <div className="flex gap-6 h-full min-h-0">
           {/* 左侧导航 */}
           <aside className="w-64 flex-shrink-0 min-h-0">
