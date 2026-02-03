@@ -1,9 +1,46 @@
-import { useState, useCallback, useMemo, useEffect, useRef } from 'react';
+import { useState, useCallback, useEffect, useRef } from 'react';
 import { Copy, Check, Trash2, FileJson, AlignLeft, Minimize2, ShieldCheck, Code2, Network, Download, Search, X } from 'lucide-react';
-import { formatJson, minifyJson, validateJson, queryJsonPath, getJsonPathSuggestions } from '@/utils/json';
 import { cn } from '@/utils/cn';
 import { JsonTree } from '@/components/ui/JsonTree';
 import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
+import JsonWorker from '../utils/json.worker?worker';
+
+type OutputMode = 'format' | 'minify';
+
+type WorkerComputeRequest = {
+  type: 'compute';
+  id: number;
+  sourceId: number;
+  text?: string;
+  indent: number;
+  outputMode: OutputMode;
+  showQuery: boolean;
+  queryForResult: string;
+  wantTree: boolean;
+};
+
+type WorkerSuggestRequest = {
+  type: 'suggest';
+  id: number;
+  sourceId: number;
+  queryInput: string;
+  limit: number;
+};
+
+type WorkerResponse =
+  | {
+      type: 'computeResult';
+      id: number;
+      parseError: string | null;
+      queryError: string | null;
+      outputText: string;
+      displayData?: unknown;
+    }
+  | {
+      type: 'suggestResult';
+      id: number;
+      suggestions: string[];
+    };
 
 function JsonFormatter() {
   const [input, setInput] = useState('');
@@ -12,10 +49,14 @@ function JsonFormatter() {
   const [copied, setCopied] = useState(false);
   const [indent, setIndent] = useState(2);
   const [viewMode, setViewMode] = useState<'code' | 'tree'>('tree');
+  const [outputMode, setOutputMode] = useState<OutputMode>('format');
+  const [expandAll, setExpandAll] = useState(true);
+  const [treeVersion, setTreeVersion] = useState(0);
   
   // JSONPath 相关状态
   const [showQuery, setShowQuery] = useState(false);
   const [queryInput, setQueryInput] = useState('$.');
+  const [debouncedQueryInput, setDebouncedQueryInput] = useState('$.');
   const [queryError, setQueryError] = useState<string | null>(null);
   const [autoClearQuery, setAutoClearQuery] = useState(true);
   
@@ -24,26 +65,114 @@ function JsonFormatter() {
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [activeSuggestionIndex, setActiveSuggestionIndex] = useState(0);
   const queryInputRef = useRef<HTMLInputElement>(null);
+  const [displayData, setDisplayData] = useState<unknown | undefined>(undefined);
 
-  // 源数据，基于 input，用于智能提示
-  const sourceData = useMemo(() => {
-    if (!input) return null;
-    try {
-      return JSON.parse(input);
-    } catch {
-      return null;
+  const workerRef = useRef<Worker | null>(null);
+  const viewModeRef = useRef(viewMode);
+  const inputRef = useRef(input);
+  const sourceIdRef = useRef(0);
+  const lastTextSentSourceIdRef = useRef<number | null>(null);
+  const computeTimerRef = useRef<number | undefined>(undefined);
+  const computeReqSeqRef = useRef(0);
+  const latestComputeReqIdRef = useRef(0);
+  const suggestReqSeqRef = useRef(0);
+  const latestSuggestReqIdRef = useRef(0);
+
+  // Keep latest view mode accessible in worker callbacks (avoid capturing stale state).
+  useEffect(() => {
+    viewModeRef.current = viewMode;
+    if (viewMode !== 'tree') {
+      // Free large structured-clone payloads when user is in code view.
+      setDisplayData(undefined);
     }
+  }, [viewMode]);
+
+  useEffect(() => {
+    const worker = new JsonWorker();
+    workerRef.current = worker;
+
+    worker.onmessage = (event: MessageEvent<WorkerResponse>) => {
+      const msg = event.data;
+      if (!msg || typeof msg !== 'object' || !('type' in msg)) return;
+
+      if (msg.type === 'computeResult') {
+        if (msg.id !== latestComputeReqIdRef.current) return;
+        setOutput(msg.outputText);
+        setError(msg.parseError);
+        setQueryError(msg.queryError);
+        if (msg.parseError) {
+          setDisplayData(undefined);
+          return;
+        }
+
+        // Only update tree data when the Worker actually sent it.
+        if (viewModeRef.current === 'tree' && msg.displayData !== undefined) {
+          setDisplayData(msg.displayData);
+        }
+      } else if (msg.type === 'suggestResult') {
+        if (msg.id !== latestSuggestReqIdRef.current) return;
+        setSuggestions(msg.suggestions);
+        setShowSuggestions(msg.suggestions.length > 0);
+        setActiveSuggestionIndex(0);
+      }
+    };
+
+    worker.onerror = () => {
+      setError('Worker 初始化失败，请刷新后重试');
+    };
+
+    return () => {
+      worker.terminate();
+      workerRef.current = null;
+    };
+  }, []);
+
+  const requestCompute = useCallback(
+    (forceText: boolean = false, wantTree: boolean = false) => {
+      const worker = workerRef.current;
+      if (!worker) return;
+
+      const sourceId = sourceIdRef.current;
+      const includeText = forceText || lastTextSentSourceIdRef.current !== sourceId;
+
+      const id = ++computeReqSeqRef.current;
+      latestComputeReqIdRef.current = id;
+
+      const msg: WorkerComputeRequest = {
+        type: 'compute',
+        id,
+        sourceId,
+        indent,
+        outputMode,
+        showQuery,
+        queryForResult: debouncedQueryInput,
+        wantTree,
+      };
+
+      if (includeText) {
+        msg.text = inputRef.current;
+        lastTextSentSourceIdRef.current = sourceId;
+      }
+
+      worker.postMessage(msg);
+    },
+    [debouncedQueryInput, indent, outputMode, showQuery]
+  );
+
+  // Avoid effects re-firing just because requestCompute is recreated when its deps change.
+  const requestComputeRef = useRef(requestCompute);
+  useEffect(() => {
+    requestComputeRef.current = requestCompute;
+  }, [requestCompute]);
+
+  const handleInputChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    sourceIdRef.current += 1;
+    setInput(e.target.value);
+  }, []);
+
+  useEffect(() => {
+    inputRef.current = input;
   }, [input]);
-
-  // 展示数据，基于 output，用于 Tree View
-  const displayData = useMemo(() => {
-    if (!output) return null;
-    try {
-      return JSON.parse(output);
-    } catch {
-      return null;
-    }
-  }, [output]);
 
   // 当 input 变化时，如果 autoClearQuery 为 true，重置查询
   // 为了避免初始渲染或微小变动都重置，我们只在 input 存在且发生变化时触发
@@ -56,64 +185,76 @@ function JsonFormatter() {
      }
   }, [input, autoClearQuery]);
 
-  // 处理内容更新（包含格式化和查询逻辑）
-  const updateOutput = useCallback((currentInput: string, currentIndent: number, isQueryActive: boolean, currentQuery: string) => {
-    if (!currentInput.trim()) {
+  // 输入变化时：防抖发送到 Worker（避免重复复制 5MB+ 字符串）
+  useEffect(() => {
+    if (!input.trim()) {
+      window.clearTimeout(computeTimerRef.current);
       setOutput('');
-      setError(null);
-      return;
-    }
-
-    // 基础验证
-    const validation = validateJson(currentInput);
-    if (!validation.valid) {
-      setError(validation.error || '无效的 JSON');
-      setOutput('');
-      return;
-    }
-
-    try {
       setError(null);
       setQueryError(null);
-      
-      // 如果处于查询模式且有查询语句
-      if (isQueryActive && currentQuery && currentQuery.trim() !== '$' && currentQuery.trim() !== '$.') {
-        try {
-           const result = queryJsonPath(currentInput, currentQuery);
-           setOutput(JSON.stringify(result, null, currentIndent));
-        } catch (e) {
-           setQueryError('无效的 JSONPath 表达式');
-           setOutput('[]'); 
-        }
-      } else {
-        // 普通格式化模式
-        setOutput(formatJson(currentInput, currentIndent));
-      }
-    } catch (e) {
-      setError((e as Error).message);
+      setDisplayData(undefined);
+      return;
     }
-  }, []);
 
-  // 监听输入、缩进、查询模式的变化
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        updateOutput(input, indent, showQuery, queryInput);
-    }, 300); // 防抖
-    return () => clearTimeout(timer);
-  }, [input, indent, showQuery, queryInput, updateOutput]);
+    window.clearTimeout(computeTimerRef.current);
+    computeTimerRef.current = window.setTimeout(() => {
+      requestComputeRef.current(false, viewModeRef.current === 'tree');
+    }, 300);
 
-  // 处理查询输入变化，生成建议 (使用 sourceData)
+    return () => window.clearTimeout(computeTimerRef.current);
+  }, [input]);
+
+  // 防抖 JSONPath 查询输入，避免每次键入都跑一遍 JSONPath
   useEffect(() => {
-    if (showQuery && sourceData && queryInput) {
-        const newSuggestions = getJsonPathSuggestions(sourceData, queryInput);
-        setSuggestions(newSuggestions);
-        setShowSuggestions(newSuggestions.length > 0);
-        setActiveSuggestionIndex(0);
-    } else {
-        setSuggestions([]);
-        setShowSuggestions(false);
+    const timer = window.setTimeout(() => setDebouncedQueryInput(queryInput), 200);
+    return () => window.clearTimeout(timer);
+  }, [queryInput]);
+
+  // 缩进/输出模式变化：只需要重算输出文本，不需要重传/重算树
+  useEffect(() => {
+    if (!inputRef.current.trim()) return;
+    requestComputeRef.current(false, false);
+  }, [indent, outputMode]);
+
+  // 查询条件变化：输出文本需要更新；Tree 模式下同时更新树数据（查询结果/退出查询）
+  useEffect(() => {
+    if (!inputRef.current.trim()) return;
+    requestComputeRef.current(false, viewModeRef.current === 'tree');
+  }, [debouncedQueryInput, showQuery]);
+
+  // 仅在 Tree 模式时拉取 displayData（避免 code view 也收大对象 clone）
+  useEffect(() => {
+    if (viewMode !== 'tree') return;
+    if (!inputRef.current.trim()) return;
+    requestComputeRef.current(false, true);
+  }, [viewMode]);
+
+  // 查询输入变化：在 Worker 中生成建议（避免主线程扫描大 JSON）
+  useEffect(() => {
+    if (!showQuery || !queryInput) {
+      setSuggestions([]);
+      setShowSuggestions(false);
+      return;
     }
-  }, [queryInput, showQuery, sourceData]);
+
+    const worker = workerRef.current;
+    if (!worker) return;
+
+    const timer = window.setTimeout(() => {
+      const id = ++suggestReqSeqRef.current;
+      latestSuggestReqIdRef.current = id;
+      const msg: WorkerSuggestRequest = {
+        type: 'suggest',
+        id,
+        sourceId: sourceIdRef.current,
+        queryInput,
+        limit: 50,
+      };
+      worker.postMessage(msg);
+    }, 120);
+
+    return () => window.clearTimeout(timer);
+  }, [queryInput, showQuery]);
 
   // 应用建议
   const applySuggestion = (suggestion: string) => {
@@ -151,24 +292,19 @@ function JsonFormatter() {
 
   // 手动触发格式化
   const handleFormat = useCallback(() => {
+    setOutputMode('format');
     setShowQuery(false); // 退出查询模式
-    updateOutput(input, indent, false, '');
-  }, [input, indent, updateOutput]);
+  }, []);
 
   // 压缩
   const handleMinify = useCallback(() => {
-    if (!input.trim()) {
+    if (!inputRef.current.trim()) {
       setError('请输入 JSON 内容');
       return;
     }
-    try {
-      setOutput(minifyJson(input));
-      setError(null);
-      setShowQuery(false);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, [input]);
+    setOutputMode('minify');
+    setShowQuery(false);
+  }, []);
 
   // 复制
   const handleCopy = useCallback(async () => {
@@ -194,11 +330,15 @@ function JsonFormatter() {
 
   // 清空
   const handleClear = useCallback(() => {
+    sourceIdRef.current += 1;
     setInput('');
     setOutput('');
     setError(null);
     setQueryError(null);
     setQueryInput('$.');
+    setSuggestions([]);
+    setShowSuggestions(false);
+    setDisplayData(undefined);
   }, []);
 
   // 填充 Path 到查询框
@@ -239,6 +379,22 @@ function JsonFormatter() {
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
                 <span className="text-gray-600">重置查询</span>
+              </label>
+              <div className="w-px h-4 bg-gray-200 mx-1"></div>
+              <label
+                className="flex items-center gap-1.5 cursor-pointer text-xs select-none"
+                title="Tree 视图默认展开全部节点（大 JSON 可能更耗资源）"
+              >
+                <input
+                  type="checkbox"
+                  checked={expandAll}
+                  onChange={(e) => {
+                    setExpandAll(e.target.checked);
+                    setTreeVersion((v) => v + 1);
+                  }}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-600">默认展开</span>
               </label>
             </div>
 
@@ -359,7 +515,7 @@ function JsonFormatter() {
           </div>
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
+            onChange={handleInputChange}
             placeholder="在此粘贴 JSON 内容..."
             className="flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none focus:bg-white transition-colors custom-scrollbar leading-relaxed"
             spellCheck={false}
@@ -451,11 +607,13 @@ function JsonFormatter() {
                 />
              ) : (
                  <div className="absolute inset-0 w-full h-full overflow-auto p-4 custom-scrollbar">
-                    {displayData ? (
+                    {displayData !== undefined ? (
                         <JsonTree 
+                            key={`json-tree-${treeVersion}`}
                             data={displayData} 
                             isLast={true} 
                             path="$"
+                            expandAll={expandAll}
                             onFillPath={handleFillPath}
                         />
                     ) : (

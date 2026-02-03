@@ -16,6 +16,7 @@
 - UI：提升全局默认行高，并增大 Popup/侧边栏导航的行高与内边距，缓解排版拥挤
 - UI：tools.html 使用视口级布局（`h-screen` + `min-h-0`），并为多个工具页引入统一 `ToolHeader/ToolMain` 布局骨架
 - UI：API 调试工具页重做为统一 ToolLayout 结构（顶部工具栏 + 请求/响应分栏 + Network Drawer），并统一 gray/blue 排版密度
+- JSON 格式化：优化大 JSON 交互性能（Web Worker 解析/格式化/JSONPath、自动修复常见非严格 JSON：尾逗号/非法转义、Tree 默认展开全部（可切换）、子节点分页渲染）
 - cURL → Markdown：示例代码默认不生成，可配置生成格式，并移动到文档末尾
 - cURL → Markdown：支持输入响应内容；未提供响应则不输出“响应示例”；移除“字段说明”段落
 - cURL → Markdown：生成的 Markdown 可编辑，复制/下载使用编辑后的内容

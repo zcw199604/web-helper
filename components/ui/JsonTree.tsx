@@ -8,9 +8,12 @@ interface JsonTreeProps {
   isLast?: boolean;
   level?: number;
   initiallyExpanded?: boolean;
+  expandAll?: boolean;
   path?: string;
   onFillPath?: (path: string) => void;
 }
+
+const CHILD_PAGE_SIZE = 200;
 
 // 简单的类型判断
 const getType = (value: any) => {
@@ -18,6 +21,31 @@ const getType = (value: any) => {
   if (Array.isArray(value)) return 'array';
   return typeof value;
 };
+
+function isEmptyPlainObject(value: Record<string, unknown>): boolean {
+  // Avoid `Object.keys` for large objects: no array allocation, early exit.
+  for (const key in value) {
+    if (Object.prototype.hasOwnProperty.call(value, key)) return false;
+  }
+  return true;
+}
+
+function takeOwnKeys(value: Record<string, unknown>, limit: number): { keys: string[]; hasMore: boolean } {
+  const keys: string[] = [];
+  if (limit <= 0) return { keys, hasMore: false };
+
+  // Collect up to `limit + 1` keys to detect "has more" without enumerating everything.
+  for (const key in value) {
+    if (!Object.prototype.hasOwnProperty.call(value, key)) continue;
+    keys.push(key);
+    if (keys.length > limit) {
+      keys.pop();
+      return { keys, hasMore: true };
+    }
+  }
+
+  return { keys, hasMore: false };
+}
 
 // 下载 JSON 文件
 const downloadJson = (data: any, fileName: string) => {
@@ -37,15 +65,20 @@ export function JsonTree({
   name, 
   isLast = true, 
   level = 0, 
-  initiallyExpanded = true,
+  // Default: only expand root. Deep auto-expand can explode DOM for large JSON.
+  initiallyExpanded,
+  expandAll,
   path = '$',
   onFillPath
 }: JsonTreeProps) {
-  const [isExpanded, setIsExpanded] = useState(initiallyExpanded);
+  const expandedByDefault = expandAll ? true : (initiallyExpanded ?? level === 0);
+  const [isExpanded, setIsExpanded] = useState(expandedByDefault);
   const [copied, setCopied] = useState(false);
+  const [visibleCount, setVisibleCount] = useState(CHILD_PAGE_SIZE);
   const type = getType(data);
   const isObject = type === 'object' || type === 'array';
-  const isEmpty = isObject && Object.keys(data).length === 0;
+  const isEmpty =
+    !isObject ? false : type === 'array' ? (data as any[]).length === 0 : isEmptyPlainObject(data as Record<string, unknown>);
   
   // 处理复制
   const handleCopy = async (e: React.MouseEvent) => {
@@ -114,7 +147,6 @@ export function JsonTree({
     );
   }
 
-  const keys = Object.keys(data);
   const BracketOpen = type === 'array' ? '[' : '{';
   const BracketClose = type === 'array' ? ']' : '}';
 
@@ -154,7 +186,7 @@ export function JsonTree({
           
           {/* 数组长度提示 */}
           {type === 'array' && !isExpanded && (
-            <span className="text-slate-400 text-xs ml-1">({keys.length} items)</span>
+            <span className="text-slate-400 text-xs ml-1">({(data as any[]).length} items)</span>
           )}
         </div>
 
@@ -189,29 +221,82 @@ export function JsonTree({
       {/* 子节点 */}
       {isExpanded && !isEmpty && (
         <div>
-          {keys.map((key, index) => {
-             // 构造子节点的 Path
-             const isSimpleKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
-             let childPath = path;
-             if (type === 'array') {
-                childPath = `${path}[${index}]`;
-             } else {
-                childPath = isSimpleKey ? `${path}.${key}` : `${path}['${key}']`;
-             }
+          {type === 'array'
+            ? (() => {
+                const total = (data as any[]).length;
+                const end = Math.min(total, visibleCount);
+                return (
+                  <>
+                    {Array.from({ length: end }, (_, index) => {
+                      const childPath = `${path}[${index}]`;
+                      return (
+                    <JsonTree
+                      key={index}
+                      name={undefined}
+                      data={(data as any[])[index]}
+                      isLast={index === total - 1}
+                      level={level + 1}
+                      expandAll={expandAll}
+                      path={childPath}
+                      onFillPath={onFillPath}
+                    />
+                  );
+                })}
+                    {total > visibleCount ? (
+                      <div
+                        className="hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5"
+                        style={{ paddingLeft: `${level * 20 + 20}px` }}
+                      >
+                        <button
+                          onClick={() => setVisibleCount((c) => c + CHILD_PAGE_SIZE)}
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          显示更多...（已显示 {end} / {total}）
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                );
+              })()
+            : (() => {
+                const { keys, hasMore } = takeOwnKeys(data as Record<string, unknown>, visibleCount);
+                const end = keys.length;
 
-             return (
-                <JsonTree
-                key={key}
-                name={type === 'array' ? undefined : key}
-                data={data[key]}
-                isLast={index === keys.length - 1}
-                level={level + 1}
-                initiallyExpanded={initiallyExpanded}
-                path={childPath}
-                onFillPath={onFillPath}
-                />
-             );
-          })}
+                return (
+                  <>
+                    {keys.map((key, index) => {
+                      const isSimpleKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
+                      const childPath = isSimpleKey ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`;
+
+                      return (
+                        <JsonTree
+                          key={key}
+                          name={key}
+                          data={(data as Record<string, unknown>)[key]}
+                          isLast={!hasMore && index === end - 1}
+                          level={level + 1}
+                          expandAll={expandAll}
+                          path={childPath}
+                          onFillPath={onFillPath}
+                        />
+                      );
+                    })}
+                    {hasMore ? (
+                      <div
+                        className="hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5"
+                        style={{ paddingLeft: `${level * 20 + 20}px` }}
+                      >
+                        <button
+                          onClick={() => setVisibleCount((c) => c + CHILD_PAGE_SIZE)}
+                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
+                        >
+                          显示更多...（已显示 {end}+）
+                        </button>
+                      </div>
+                    ) : null}
+                  </>
+                );
+              })()}
           <div 
              className="hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5"
              style={{ paddingLeft: `${level * 20 + 20}px` }}
