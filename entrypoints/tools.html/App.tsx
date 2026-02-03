@@ -20,70 +20,78 @@ const navItems = TOOL_MODULES.map((tool) => ({
 
 function App() {
   return (
-    <div className="flex h-screen bg-slate-50">
-      {/* 侧边栏 */}
-      <aside className="w-64 bg-white border-r border-slate-200 flex flex-col shadow-[4px_0_24px_-12px_rgba(0,0,0,0.1)] z-10">
-        {/* Logo */}
-        <div className="p-6">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-lg bg-blue-600 flex items-center justify-center text-white font-bold shadow-lg shadow-blue-500/30">
+    <div className="h-screen w-screen overflow-hidden bg-slate-50 flex flex-col text-slate-900">
+      {/* 顶部栏 */}
+      <header className="bg-white/90 backdrop-blur-sm border-b border-slate-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center h-16 gap-3">
+            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 flex items-center justify-center text-white font-semibold shadow-sm">
               W
             </div>
             <div>
-              <h1 className="text-lg font-bold text-slate-800 tracking-tight leading-tight">Web Helper</h1>
-              <p className="text-[11px] font-medium text-slate-400 uppercase tracking-wider">Developer Tools</p>
+              <h1 className="text-lg font-semibold text-slate-900 leading-6 tracking-tight">Web Helper</h1>
+              <p className="text-xs text-slate-500 leading-5">Developer Toolbox</p>
             </div>
           </div>
         </div>
+      </header>
 
-        {/* 导航菜单 */}
-        <nav className="flex-1 px-3 space-y-1 overflow-y-auto py-2">
-          <div className="text-xs font-semibold text-slate-400 px-3 py-2 uppercase tracking-wider">
-            Tools
-          </div>
-          {navItems.map((item) => {
-            const Icon = item.icon;
-            return (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                className={({ isActive }) =>
-                  cn(
-                    'group flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all duration-200',
-                    isActive
-                      ? 'bg-blue-50 text-blue-700 shadow-sm ring-1 ring-blue-100'
-                      : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-                  )
-                }
-              >
-                {({ isActive }) => (
-                  <>
-                    <Icon className={cn('w-5 h-5 transition-colors', isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600')} strokeWidth={isActive ? 2.5 : 2} />
-                    <span className={cn('text-sm font-medium', isActive ? 'font-semibold' : '')}>{item.name}</span>
-                    {isActive && (
-                      <div className="ml-auto w-1.5 h-1.5 rounded-full bg-blue-500" />
-                    )}
-                  </>
-                )}
-              </NavLink>
-            );
-          })}
-        </nav>
+      <div className="flex-1 min-h-0 max-w-7xl mx-auto w-full px-4 sm:px-6 lg:px-8 py-8">
+        <div className="flex gap-6 h-full min-h-0">
+          {/* 左侧导航 */}
+          <aside className="w-64 flex-shrink-0 min-h-0">
+            <nav className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 overflow-hidden h-full min-h-0 flex flex-col">
+              <div className="p-5 border-b border-slate-100">
+                <h2 className="text-sm font-medium text-slate-500 uppercase tracking-wide">
+                  工具
+                </h2>
+              </div>
 
-        {/* 底部 */}
-        <div className="p-4 border-t border-slate-100">
-          <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
-            <Settings className="w-5 h-5 text-slate-400" />
-            <span className="text-sm font-medium">设置</span>
-          </button>
-        </div>
-      </aside>
+              <div className="flex-1 min-h-0 overflow-y-auto py-2">
+                {navItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <NavLink
+                      key={item.path}
+                      to={item.path}
+                      className={({ isActive }) =>
+                        cn(
+                          'group w-full flex items-center px-4 py-3 rounded-xl text-left transition-colors mx-2 my-0.5',
+                          isActive
+                            ? 'bg-slate-100 text-slate-900'
+                            : 'text-slate-700 hover:bg-slate-50'
+                        )
+                      }
+                    >
+                      {({ isActive }) => (
+                        <>
+                          <Icon
+                            className={cn(
+                              'w-5 h-5 mr-3 transition-colors',
+                              isActive ? 'text-blue-600' : 'text-slate-400 group-hover:text-slate-600'
+                            )}
+                            strokeWidth={2}
+                          />
+                          <span className="font-medium leading-6">{item.name}</span>
+                        </>
+                      )}
+                    </NavLink>
+                  );
+                })}
+              </div>
 
-      {/* 主内容区 */}
-      <main className="flex-1 overflow-hidden flex flex-col min-w-0">
-        <div className="flex-1 overflow-y-auto p-8">
-          <div className="max-w-7xl mx-auto h-full flex flex-col">
-            <div className="bg-white rounded-2xl shadow-sm border border-slate-200/60 h-full overflow-hidden flex flex-col">
+              <div className="p-4 border-t border-slate-100">
+                <button className="w-full flex items-center gap-3 px-3 py-2.5 rounded-xl text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-colors">
+                  <Settings className="w-5 h-5 text-slate-400" />
+                  <span className="text-sm font-medium">设置</span>
+                </button>
+              </div>
+            </nav>
+          </aside>
+
+          {/* 右侧内容区域 */}
+          <main className="flex-1 min-w-0 min-h-0">
+            <div className="bg-white rounded-2xl shadow-sm ring-1 ring-black/5 h-full min-h-0 overflow-hidden flex flex-col">
               <Routes>
                 <Route path="/" element={<Navigate to="/json" replace />} />
                 <Route path="/json" element={<JsonFormatter />} />
@@ -94,9 +102,9 @@ function App() {
                 <Route path="/curl-to-md" element={<CurlToMarkdown />} />
               </Routes>
             </div>
-          </div>
+          </main>
         </div>
-      </main>
+      </div>
     </div>
   );
 }

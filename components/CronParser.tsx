@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Copy, Check, Trash2, Play, Clock, CalendarDays, History } from 'lucide-react';
 import { getNextExecutions, cronToHuman, validateCron, CRON_EXAMPLES } from '@/utils/cron';
 import { cn } from '@/utils/cn';
+import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
 
 function CronParser() {
   const [input, setInput] = useState('');
@@ -73,30 +74,29 @@ function CronParser() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
-       {/* 顶部工具栏 */}
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-purple-50 rounded-lg text-purple-600">
-            <Clock className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-800">Cron 表达式</h2>
-            <p className="text-xs text-slate-400">解析 Cron 表达式与执行时间预测</p>
-          </div>
-        </div>
-         <div className="flex items-center gap-2">
-            <button onClick={handleParse} className="btn btn-primary bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2">
-                <Play className="w-4 h-4" />
-                <span>解析</span>
+    <ToolPageShell>
+      <ToolHeader
+        title="Cron 表达式"
+        description="解析 Cron 表达式与执行时间预测"
+        icon={<Clock className="w-5 h-5" />}
+        iconClassName="bg-purple-50 text-purple-600"
+        actions={
+          <>
+            <button
+              onClick={handleParse}
+              className="btn btn-primary bg-purple-600 hover:bg-purple-700 focus:ring-purple-500 gap-2"
+            >
+              <Play className="w-4 h-4" />
+              <span>解析</span>
             </button>
-             <button onClick={handleClear} className="btn btn-ghost p-2 text-slate-400 hover:text-red-500">
-                <Trash2 className="w-5 h-5" />
-             </button>
-         </div>
-      </div>
+            <button onClick={handleClear} className="btn btn-ghost p-2 text-gray-400 hover:text-red-500">
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </>
+        }
+      />
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <ToolMain className="overflow-y-auto p-6">
         <div className="max-w-4xl mx-auto space-y-8">
             
             {/* 输入区 */}
@@ -190,8 +190,8 @@ function CronParser() {
             </div>
 
         </div>
-      </div>
-    </div>
+      </ToolMain>
+    </ToolPageShell>
   );
 }
 

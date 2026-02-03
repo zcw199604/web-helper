@@ -10,6 +10,7 @@ import { cn } from '@/utils/cn';
 import { parseRequestSnippet } from '@/utils/request';
 import { buildRequestMarkdown, suggestMarkdownFileName, type ExampleCodeFormat } from '@/utils/markdown';
 import { MarkdownPreview } from '@/components/ui/MarkdownPreview';
+import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
 
 interface RequestMeta {
   method: string;
@@ -91,27 +92,20 @@ function CurlToMarkdown() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* 顶部工具栏 */}
-      <div className="px-6 py-4 border-b border-slate-100 flex flex-col gap-4 bg-white sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3 min-w-0">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-              <FileText className="w-5 h-5" />
-            </div>
-            <div className="min-w-0">
-              <h2 className="text-base font-bold text-slate-800">cURL / fetch → Markdown</h2>
-              <p className="text-xs text-slate-400">粘贴 DevTools「Copy as cURL / Copy as fetch」，生成接口文档</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-2 px-3 py-2 bg-slate-50 border border-slate-200 rounded-lg">
-              <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">示例代码</span>
+    <ToolPageShell>
+      <ToolHeader
+        title="cURL / fetch → Markdown"
+        description="粘贴 DevTools「Copy as cURL / Copy as fetch」，生成接口文档"
+        icon={<FileText className="w-5 h-5" />}
+        iconClassName="bg-indigo-50 text-indigo-600"
+        actions={
+          <>
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg">
+              <span className="text-xs font-semibold text-gray-500 uppercase tracking-wider">示例代码</span>
               <select
                 value={exampleCode}
                 onChange={(e) => setExampleCode(e.target.value as ExampleCodeFormat)}
-                className="bg-transparent text-sm text-slate-700 focus:outline-none"
+                className="bg-transparent text-sm text-gray-700 focus:outline-none"
                 title="控制是否生成示例代码，以及示例代码格式"
               >
                 <option value="none">不生成</option>
@@ -132,32 +126,33 @@ function CurlToMarkdown() {
               <Trash2 className="w-4 h-4" />
               <span>清空</span>
             </button>
-          </div>
-        </div>
+          </>
+        }
+        toolbar={
+          <div className="space-y-3">
+            {error ? (
+              <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
+                <AlertTriangle className="w-5 h-5 flex-shrink-0" />
+                {error}
+              </div>
+            ) : null}
 
-        {/* 错误提示 */}
-        {error && (
-          <div className="p-4 bg-red-50 border border-red-100 rounded-xl text-red-600 text-sm flex items-center gap-3 animate-in fade-in slide-in-from-top-2">
-            <AlertTriangle className="w-5 h-5 flex-shrink-0" />
-            {error}
+            {meta && !error ? (
+              <div className="flex items-center gap-2 text-xs text-slate-500 min-w-0">
+                <span className="px-2 py-1 rounded-md bg-slate-100 font-mono flex-shrink-0">{meta.method}</span>
+                <span className="truncate font-mono">{meta.url}</span>
+              </div>
+            ) : null}
           </div>
-        )}
-
-        {/* 解析摘要 */}
-        {meta && !error && (
-          <div className="flex items-center gap-2 text-xs text-slate-500 min-w-0">
-            <span className="px-2 py-1 rounded-md bg-slate-100 font-mono flex-shrink-0">{meta.method}</span>
-            <span className="truncate font-mono">{meta.url}</span>
-          </div>
-        )}
-      </div>
+        }
+      />
 
       {/* 主编辑区 */}
-        <div className="flex-1 grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
+      <ToolMain className="grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
         {/* 输入区 */}
         <div className="flex flex-col h-full bg-slate-50/30">
           <div className="flex flex-col flex-[2] min-h-0">
-            <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Request (cURL / fetch)</span>
               <span className="text-xs text-slate-400">{input.length} chars</span>
             </div>
@@ -170,7 +165,7 @@ function CurlToMarkdown() {
           </div>
 
           <div className="flex flex-col flex-1 min-h-0 border-t border-slate-100">
-            <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+            <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Response (可选)</span>
               <span className="text-xs text-slate-400">{response.length} chars</span>
             </div>
@@ -185,7 +180,7 @@ function CurlToMarkdown() {
 
         {/* 输出区 */}
         <div className="flex flex-col h-full">
-          <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-white">
             <div className="flex items-center gap-3">
               <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Markdown</span>
               <div className="flex items-center p-1 bg-slate-100 rounded-lg">
@@ -235,8 +230,8 @@ function CurlToMarkdown() {
             </div>
           )}
         </div>
-      </div>
-    </div>
+      </ToolMain>
+    </ToolPageShell>
   );
 }
 

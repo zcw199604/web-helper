@@ -15,6 +15,7 @@
     "postinstall": "wxt prepare"
   },
   "dependencies": {
+    "@twsxtd/hapi": "^0.15.0",
     "clsx": "^2.1.1",
     "cron-parser": "^5.4.0",
     "cronstrue": "^3.9.0",

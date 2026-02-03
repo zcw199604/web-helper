@@ -3,6 +3,7 @@ import { Copy, Check, Trash2, FileJson, AlignLeft, Minimize2, ShieldCheck, Code2
 import { formatJson, minifyJson, validateJson, queryJsonPath, getJsonPathSuggestions } from '@/utils/json';
 import { cn } from '@/utils/cn';
 import { JsonTree } from '@/components/ui/JsonTree';
+import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
 
 function JsonFormatter() {
   const [input, setInput] = useState('');
@@ -207,77 +208,72 @@ function JsonFormatter() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* 顶部工具栏 */}
-      <div className="px-6 py-4 border-b border-slate-100 flex flex-col gap-4 bg-white sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-            <div className="p-2 bg-amber-50 rounded-lg text-amber-600">
-                <FileJson className="w-5 h-5" />
-            </div>
-            <div>
-                <h2 className="text-base font-bold text-slate-800">JSON 格式化</h2>
-                <p className="text-xs text-slate-400">格式化、验证与 JSONPath 查询</p>
-            </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-            <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 rounded-lg border border-slate-200">
-                <label className="text-xs font-medium text-slate-500">缩进:</label>
-                <select
+    <ToolPageShell>
+      <ToolHeader
+        title="JSON 格式化"
+        description="格式化、验证与 JSONPath 查询"
+        icon={<FileJson className="w-5 h-5" />}
+        iconClassName="bg-amber-50 text-amber-600"
+        actions={
+          <>
+            <div className="flex items-center gap-2 px-3 py-2 bg-gray-50 rounded-lg border border-gray-200">
+              <label className="text-xs font-medium text-gray-500">缩进:</label>
+              <select
                 value={indent}
                 onChange={(e) => setIndent(Number(e.target.value))}
-                className="bg-transparent text-sm font-medium text-slate-700 focus:outline-none cursor-pointer"
-                >
+                className="bg-transparent text-sm font-medium text-gray-700 focus:outline-none cursor-pointer"
+              >
                 <option value={2}>2 空格</option>
                 <option value={4}>4 空格</option>
                 <option value={1}>1 Tab</option>
-                </select>
-                <div className="w-px h-4 bg-slate-200 mx-1"></div>
-                <label className="flex items-center gap-1.5 cursor-pointer text-xs select-none" title="重新输入 JSON 时自动清空查询条件">
-                    <input 
-                        type="checkbox" 
-                        checked={autoClearQuery}
-                        onChange={(e) => setAutoClearQuery(e.target.checked)}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span className="text-slate-500">重置查询</span>
-                </label>
+              </select>
+              <div className="w-px h-4 bg-gray-200 mx-1"></div>
+              <label
+                className="flex items-center gap-1.5 cursor-pointer text-xs select-none"
+                title="重新输入 JSON 时自动清空查询条件"
+              >
+                <input
+                  type="checkbox"
+                  checked={autoClearQuery}
+                  onChange={(e) => setAutoClearQuery(e.target.checked)}
+                  className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                />
+                <span className="text-gray-600">重置查询</span>
+              </label>
             </div>
-            
-            <div className="h-6 w-px bg-slate-200 mx-1" />
+
+            <div className="hidden lg:block h-6 w-px bg-gray-200 mx-1" />
 
             <button onClick={handleFormat} className="btn btn-primary gap-2">
-                <AlignLeft className="w-4 h-4" />
-                <span>格式化</span>
+              <AlignLeft className="w-4 h-4" />
+              <span>格式化</span>
             </button>
-            
+
             <button onClick={handleMinify} className="btn btn-secondary gap-2">
-                <Minimize2 className="w-4 h-4" />
-                <span>压缩</span>
+              <Minimize2 className="w-4 h-4" />
+              <span>压缩</span>
             </button>
 
-             <button 
-                onClick={() => setShowQuery(!showQuery)} 
-                className={cn(
-                    "btn gap-2 transition-all",
-                    showQuery 
-                        ? "bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200" 
-                        : "btn-secondary"
-                )}
+            <button
+              onClick={() => setShowQuery(!showQuery)}
+              className={cn(
+                'btn gap-2 transition-all',
+                showQuery
+                  ? 'bg-purple-100 text-purple-700 border border-purple-200 hover:bg-purple-200'
+                  : 'btn-secondary'
+              )}
             >
-                <Search className="w-4 h-4" />
-                <span>查询</span>
+              <Search className="w-4 h-4" />
+              <span>查询</span>
             </button>
-            
-            <button onClick={handleClear} className="btn btn-ghost p-2 text-slate-400 hover:text-red-500">
-                <Trash2 className="w-5 h-5" />
-            </button>
-            </div>
-        </div>
 
-        {/* JSONPath 查询栏 (可折叠) */}
-        {showQuery && (
+            <button onClick={handleClear} className="btn btn-ghost p-2 text-gray-400 hover:text-red-500">
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </>
+        }
+        toolbar={
+          showQuery ? (
             <div className="animate-in slide-in-from-top-2 duration-200 relative">
                 <div className="relative flex items-center">
                      <input 
@@ -339,8 +335,9 @@ function JsonFormatter() {
                      </a>
                 </div>
             </div>
-        )}
-      </div>
+          ) : null
+        }
+      />
 
       {/* 错误提示 (全局 JSON 错误) */}
       {error && (
@@ -353,10 +350,10 @@ function JsonFormatter() {
       )}
 
       {/* 主编辑区 */}
-      <div className="flex-1 grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
+      <ToolMain className="grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
         {/* 输入区 */}
         <div className="flex flex-col h-full bg-slate-50/30">
-          <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Input</span>
             <span className="text-xs text-slate-400">{input.length} chars</span>
           </div>
@@ -371,7 +368,7 @@ function JsonFormatter() {
 
         {/* 输出区 */}
         <div className="flex flex-col h-full bg-white relative group">
-          <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-white">
              <div className="flex items-center gap-3">
                  <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
                     {showQuery ? "Query Result" : "Output"}
@@ -471,8 +468,8 @@ function JsonFormatter() {
              )}
           </div>
         </div>
-      </div>
-    </div>
+      </ToolMain>
+    </ToolPageShell>
   );
 }
 

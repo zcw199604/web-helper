@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { Copy, Check, Trash2, AlertTriangle, CheckCircle, KeyRound, Shield, FileText, Lock } from 'lucide-react';
 import { decodeJwt, validateJwt, JwtDecodeResult } from '@/utils/jwt';
 import { cn } from '@/utils/cn';
+import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
 
 function JwtDecoder() {
   const [input, setInput] = useState('');
@@ -82,30 +83,29 @@ function JwtDecoder() {
   };
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* 顶部工具栏 */}
-      <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-white sticky top-0 z-10">
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-rose-50 rounded-lg text-rose-600">
-            <KeyRound className="w-5 h-5" />
-          </div>
-          <div>
-            <h2 className="text-base font-bold text-slate-800">JWT 解码</h2>
-            <p className="text-xs text-slate-400">JWT Token 解析与验证</p>
-          </div>
-        </div>
-         <div className="flex items-center gap-2">
-            <button onClick={handleDecode} className="btn btn-primary bg-rose-600 hover:bg-rose-700 focus:ring-rose-500 gap-2">
-                <Shield className="w-4 h-4" />
-                <span>解码 Token</span>
+    <ToolPageShell>
+      <ToolHeader
+        title="JWT 解码"
+        description="JWT Token 解析与验证"
+        icon={<KeyRound className="w-5 h-5" />}
+        iconClassName="bg-rose-50 text-rose-600"
+        actions={
+          <>
+            <button
+              onClick={handleDecode}
+              className="btn btn-primary bg-rose-600 hover:bg-rose-700 focus:ring-rose-500 gap-2"
+            >
+              <Shield className="w-4 h-4" />
+              <span>解码 Token</span>
             </button>
-             <button onClick={handleClear} className="btn btn-ghost p-2 text-slate-400 hover:text-red-500">
-                <Trash2 className="w-5 h-5" />
-             </button>
-         </div>
-      </div>
+            <button onClick={handleClear} className="btn btn-ghost p-2 text-gray-400 hover:text-red-500">
+              <Trash2 className="w-5 h-5" />
+            </button>
+          </>
+        }
+      />
 
-      <div className="flex-1 overflow-y-auto p-6">
+      <ToolMain className="overflow-y-auto p-6">
          <div className="max-w-5xl mx-auto space-y-6">
             
             {/* 输入区域 */}
@@ -215,8 +215,8 @@ function JwtDecoder() {
                 </div>
             )}
          </div>
-      </div>
-    </div>
+      </ToolMain>
+    </ToolPageShell>
   );
 }
 

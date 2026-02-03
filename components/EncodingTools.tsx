@@ -3,6 +3,7 @@ import { Copy, Check, Trash2, ArrowDownUp, Binary, Link, List, Settings2 } from 
 import { encodeBase64, decodeBase64, isValidBase64 } from '@/utils/base64';
 import { encodeUrl, decodeUrl, parseQueryParams } from '@/utils/url';
 import { cn } from '@/utils/cn';
+import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
 
 function EncodingTools() {
   const [input, setInput] = useState('');
@@ -99,55 +100,46 @@ function EncodingTools() {
   }, []);
 
   return (
-    <div className="h-full flex flex-col bg-white">
-      {/* 顶部工具栏 */}
-      <div className="px-6 py-4 border-b border-slate-100 flex flex-col gap-4 bg-white sticky top-0 z-10">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-indigo-50 rounded-lg text-indigo-600">
-              <Settings2 className="w-5 h-5" />
-            </div>
-            <div>
-              <h2 className="text-base font-bold text-slate-800">编码转换</h2>
-              <p className="text-xs text-slate-400">Base64 / URL 编码与解码</p>
-            </div>
-          </div>
-        </div>
-
-        {/* 操作按钮组 */}
-        <div className="flex flex-wrap items-center gap-3">
+    <ToolPageShell>
+      <ToolHeader
+        title="编码转换"
+        description="Base64 / URL 编码与解码"
+        icon={<Settings2 className="w-5 h-5" />}
+        iconClassName="bg-indigo-50 text-indigo-600"
+        toolbar={
+          <div className="flex flex-wrap items-center gap-3">
           
           {/* Base64 Group */}
-          <div className="flex items-center bg-slate-50 p-1 rounded-lg border border-slate-200">
-             <div className="px-2 text-xs font-semibold text-slate-400 flex items-center gap-1">
+          <div className="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200">
+             <div className="px-2 text-xs font-semibold text-gray-400 flex items-center gap-1">
                 <Binary className="w-3.5 h-3.5" />
                 Base64
              </div>
-             <div className="w-px h-4 bg-slate-200 mx-1"></div>
-             <button onClick={handleBase64Encode} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
+             <div className="w-px h-4 bg-gray-200 mx-1"></div>
+             <button onClick={handleBase64Encode} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
                 编码
              </button>
-             <button onClick={handleBase64Decode} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
+             <button onClick={handleBase64Decode} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
                 解码
              </button>
           </div>
 
           {/* URL Group */}
-          <div className="flex items-center bg-slate-50 p-1 rounded-lg border border-slate-200">
-             <div className="px-2 text-xs font-semibold text-slate-400 flex items-center gap-1">
+          <div className="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200">
+             <div className="px-2 text-xs font-semibold text-gray-400 flex items-center gap-1">
                 <Link className="w-3.5 h-3.5" />
                 URL
              </div>
-             <div className="w-px h-4 bg-slate-200 mx-1"></div>
-             <button onClick={handleUrlEncode} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-emerald-600 hover:bg-white rounded-md transition-all">
+             <div className="w-px h-4 bg-gray-200 mx-1"></div>
+             <button onClick={handleUrlEncode} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-emerald-600 hover:bg-white rounded-md transition-all">
                 编码
              </button>
-             <button onClick={handleUrlDecode} className="px-3 py-1.5 text-xs font-medium text-slate-600 hover:text-emerald-600 hover:bg-white rounded-md transition-all">
+             <button onClick={handleUrlDecode} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-emerald-600 hover:bg-white rounded-md transition-all">
                 解码
              </button>
           </div>
 
-          <div className="h-6 w-px bg-slate-200 mx-1" />
+          <div className="h-6 w-px bg-gray-200 mx-1" />
 
           <button 
             onClick={handleParseParams} 
@@ -170,8 +162,9 @@ function EncodingTools() {
           <button onClick={handleClear} className="btn btn-ghost p-2 text-slate-400 hover:text-red-500">
             <Trash2 className="w-5 h-5" />
           </button>
-        </div>
-      </div>
+          </div>
+        }
+      />
 
       {/* 错误提示 */}
       {error && (
@@ -183,10 +176,10 @@ function EncodingTools() {
       )}
 
       {/* 主编辑区 */}
-      <div className="flex-1 grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
+      <ToolMain className="grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
         {/* 输入区 */}
         <div className="flex flex-col h-full bg-slate-50/30">
-          <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Input</span>
             <span className="text-xs text-slate-400">{input.length} chars</span>
           </div>
@@ -200,7 +193,7 @@ function EncodingTools() {
 
         {/* 输出区 */}
         <div className="flex flex-col h-full bg-white relative group">
-          <div className="px-4 py-2 border-b border-slate-100 flex items-center justify-between bg-white">
+          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-white">
             <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output</span>
             <button
               onClick={handleCopy}
@@ -240,7 +233,7 @@ function EncodingTools() {
               {/* 参数列表面板 */}
               {showParams && (
                 <div className="flex-1 bg-slate-50 flex flex-col min-h-0 animate-in slide-in-from-bottom-4 duration-300">
-                    <div className="px-4 py-2 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
+                    <div className="px-4 py-3 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
                          <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">URL Parameters</span>
                          <button onClick={() => setShowParams(false)} className="text-slate-400 hover:text-slate-600">
                              <span className="text-xs">Close</span>
@@ -258,8 +251,8 @@ function EncodingTools() {
               )}
           </div>
         </div>
-      </div>
-    </div>
+      </ToolMain>
+    </ToolPageShell>
   );
 }
 
