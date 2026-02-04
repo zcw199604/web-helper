@@ -1,7 +1,14 @@
 import type { LucideIcon } from 'lucide-react';
-import { FileJson, KeyRound, Clock, Settings2, Network, FileText } from 'lucide-react';
+import { FileJson, KeyRound, Clock, Settings2, Network, FileText, Cable } from 'lucide-react';
 
-export type ToolId = 'json' | 'encoding' | 'cron' | 'jwt' | 'api-tester' | 'curl-to-md';
+export type ToolId =
+  | 'json'
+  | 'encoding'
+  | 'cron'
+  | 'jwt'
+  | 'api-tester'
+  | 'curl-to-md'
+  | 'websocket';
 
 export type ToolModule = {
   id: ToolId;
@@ -66,6 +73,16 @@ export const TOOL_MODULES: ToolModule[] = [
     },
   },
   {
+    id: 'websocket',
+    name: 'WebSocket 调试',
+    description: '连接、发送与接收消息',
+    icon: Cable,
+    popupStyle: {
+      color: 'text-cyan-700',
+      bgColor: 'bg-cyan-50',
+    },
+  },
+  {
     id: 'curl-to-md',
     name: 'cURL / fetch → Markdown',
     description: '把请求转换成 Markdown 文档',
@@ -93,4 +110,3 @@ export function resolveToolModulesByIds(
 
   return resolved;
 }
-

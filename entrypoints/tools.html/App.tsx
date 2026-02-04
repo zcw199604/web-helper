@@ -10,6 +10,7 @@ import CronParser from '@/components/CronParser';
 import JwtDecoder from '@/components/JwtDecoder';
 import ApiTester from '@/components/ApiTester';
 import CurlToMarkdown from '@/components/CurlToMarkdown';
+import WebSocketTool from '@/components/WebSocketTool';
 
 // 导航菜单配置
 const navItems = TOOL_MODULES.map((tool) => ({
@@ -100,6 +101,7 @@ function App() {
                 <Route path="/jwt" element={<JwtDecoder />} />
                 <Route path="/api-tester" element={<ApiTester />} />
                 <Route path="/curl-to-md" element={<CurlToMarkdown />} />
+                <Route path="/websocket" element={<WebSocketTool />} />
               </Routes>
             </div>
           </main>

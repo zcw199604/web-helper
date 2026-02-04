@@ -8,6 +8,7 @@
 
 ### 新增
 - cURL / fetch → Markdown：支持 Markdown 渲染预览（下载前检查排版）
+- WebSocket 调试：新增工具页（扩展面板/页面上下文连接、Text/JSON/Binary、日志搜索/过滤、自动重连、心跳）
 
 ### 变更
 - Popup 菜单：支持通过 `popupVisibleToolIds` 配置展示模块，并与面板共用工具注册表避免不一致

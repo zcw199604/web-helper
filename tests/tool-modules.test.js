@@ -18,3 +18,6 @@ test('resolveToolModulesByIds: ignores unknown ids', () => {
   assert.deepEqual(result.map((t) => t.id), ['json', 'jwt']);
 });
 
+test('TOOL_MODULES: includes websocket tool', () => {
+  assert.ok(TOOL_MODULES.some((t) => t.id === 'websocket'));
+});

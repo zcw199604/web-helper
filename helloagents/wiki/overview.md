@@ -29,6 +29,7 @@ Web Helper 是一个浏览器 DevTools 工具箱扩展，提供常用开发辅�
 | Cron 表达式 | Cron 解析与人类可读描述 | ✅稳定 | [modules/cron-parser.md](modules/cron-parser.md) |
 | JWT 解码 | JWT 解码与展示 | ✅稳定 | [modules/jwt-decoder.md](modules/jwt-decoder.md) |
 | API 调试 | 发送请求、抓包/填充（HAR） | ✅稳定 | [modules/api-tester.md](modules/api-tester.md) |
+| WebSocket 调试 | 连接、发送与接收消息 | ✅稳定 | [modules/websocket-tool.md](modules/websocket-tool.md) |
 | cURL / fetch → Markdown | 从 cURL / fetch 文本生成 Markdown 接口文档 | ✅稳定 | [modules/curl-to-md.md](modules/curl-to-md.md) |
 
 ---
