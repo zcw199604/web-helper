@@ -25,7 +25,19 @@ type SuggestRequest = {
   limit: number;
 };
 
-type WorkerRequest = ComputeRequest | SuggestRequest;
+type SearchRequest = {
+  type: 'search';
+  id: number;
+  sourceId: number;
+  // Only include on input change to avoid copying large strings repeatedly.
+  text?: string;
+  query: string;
+  limit: number;
+  caseSensitive: boolean;
+  mode: 'key' | 'value' | 'both';
+};
+
+type WorkerRequest = ComputeRequest | SuggestRequest | SearchRequest;
 
 type ComputeResponse = {
   type: 'computeResult';
@@ -43,11 +55,28 @@ type SuggestResponse = {
   suggestions: string[];
 };
 
-type WorkerResponse = ComputeResponse | SuggestResponse;
+type SearchMatch = {
+  path: string;
+  // Short preview for UI; best-effort, may be empty for non-primitive matches.
+  preview: string;
+  matchIn: 'key' | 'value';
+};
+
+type SearchResponse = {
+  type: 'searchResult';
+  id: number;
+  matches: SearchMatch[];
+  truncated: boolean;
+  error: string | null;
+};
+
+type WorkerResponse = ComputeResponse | SuggestResponse | SearchResponse;
 
 let cachedSourceId: number | null = null;
 let cachedJson: unknown | undefined = undefined;
 let cachedParseError: string | null = null;
+
+const SIMPLE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
 function stripTrailingCommasOutsideStrings(text: string): string {
   let out = '';
@@ -354,12 +383,178 @@ function handleSuggest(req: SuggestRequest): SuggestResponse {
   return { type: 'suggestResult', id: req.id, suggestions };
 }
 
+function toSearchableString(value: unknown): string | null {
+  if (value === null) return 'null';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'number' || typeof value === 'boolean' || typeof value === 'bigint') return String(value);
+  return null;
+}
+
+function makePreview(value: unknown): string {
+  const s = toSearchableString(value);
+  if (s === null) {
+    if (Array.isArray(value)) return `[Array(${value.length})]`;
+    if (value && typeof value === 'object') return '{Object}';
+    return '';
+  }
+
+  // Keep previews compact for large strings.
+  const trimmed = s.length > 160 ? s.slice(0, 160) + '…' : s;
+  if (typeof value === 'string') return `"${trimmed}"`;
+  return trimmed;
+}
+
+function handleSearch(req: SearchRequest): SearchResponse {
+  if (req.text !== undefined) {
+    parseAndCache(req.sourceId, req.text);
+  }
+
+  const { json, parseError } = getCached(req.sourceId);
+  if (parseError || json === undefined) {
+    return {
+      type: 'searchResult',
+      id: req.id,
+      matches: [],
+      truncated: false,
+      error: parseError ?? '无效的 JSON',
+    };
+  }
+
+  const qRaw = req.query ?? '';
+  const qTrimmed = qRaw.trim();
+  if (!qTrimmed) {
+    return { type: 'searchResult', id: req.id, matches: [], truncated: false, error: null };
+  }
+
+  const q = req.caseSensitive ? qTrimmed : qTrimmed.toLowerCase();
+  const limit = Math.max(1, req.limit | 0);
+
+  const wantKey = req.mode === 'key' || req.mode === 'both';
+  const wantValue = req.mode === 'value' || req.mode === 'both';
+
+  const matches: SearchMatch[] = [];
+  let truncated = false;
+
+  // Iterative DFS to avoid call stack overflow for deep JSON.
+  const stack: Array<{ value: any; path: string }> = [{ value: json, path: '$' }];
+
+  const pushObjectChildren = (obj: Record<string, unknown>, basePath: string) => {
+    // Preserve the iteration order (same as the tree view) by matching in-forward
+    // and pushing children onto the stack in reverse.
+    const keys: string[] = [];
+    for (const key in obj) {
+      if (!Object.prototype.hasOwnProperty.call(obj, key)) continue;
+      keys.push(key);
+    }
+    for (let i = 0; i < keys.length; i += 1) {
+      const key = keys[i];
+      const isSimpleKey = SIMPLE_KEY_RE.test(key);
+      const childPath = isSimpleKey ? `${basePath}.${key}` : `${basePath}[${JSON.stringify(key)}]`;
+      const childValue = obj[key];
+      if (wantKey) {
+        const hay = req.caseSensitive ? key : key.toLowerCase();
+        if (hay.includes(q)) {
+          matches.push({ path: childPath, preview: makePreview(childValue), matchIn: 'key' });
+          if (matches.length >= limit) return false;
+        }
+      }
+
+      if (wantValue) {
+        const s = toSearchableString(childValue);
+        if (s !== null) {
+          const hay = req.caseSensitive ? s : s.toLowerCase();
+          if (hay.includes(q)) {
+            matches.push({ path: childPath, preview: makePreview(childValue), matchIn: 'value' });
+            if (matches.length >= limit) return false;
+          }
+        }
+      }
+    }
+
+    for (let i = keys.length - 1; i >= 0; i -= 1) {
+      const key = keys[i];
+      const isSimpleKey = SIMPLE_KEY_RE.test(key);
+      const childPath = isSimpleKey ? `${basePath}.${key}` : `${basePath}[${JSON.stringify(key)}]`;
+      const childValue = obj[key];
+      if (childValue !== null && typeof childValue === 'object') {
+        stack.push({ value: childValue, path: childPath });
+      }
+    }
+
+    return true;
+  };
+
+  const pushArrayChildren = (arr: any[], basePath: string) => {
+    for (let i = 0; i < arr.length; i += 1) {
+      const childPath = `${basePath}[${i}]`;
+      if (wantValue) {
+        const s = toSearchableString(arr[i]);
+        if (s !== null) {
+          const hay = req.caseSensitive ? s : s.toLowerCase();
+          if (hay.includes(q)) {
+            matches.push({ path: childPath, preview: makePreview(arr[i]), matchIn: 'value' });
+            if (matches.length >= limit) return false;
+          }
+        }
+      }
+    }
+
+    for (let i = arr.length - 1; i >= 0; i -= 1) {
+      const childValue = arr[i];
+      if (childValue !== null && typeof childValue === 'object') {
+        const childPath = `${basePath}[${i}]`;
+        stack.push({ value: childValue, path: childPath });
+      }
+    }
+
+    return true;
+  };
+
+  while (stack.length > 0) {
+    if (matches.length >= limit) {
+      truncated = true;
+      break;
+    }
+
+    const { value, path } = stack.pop()!;
+    if (value === null || value === undefined) continue;
+
+    if (Array.isArray(value)) {
+      const ok = pushArrayChildren(value, path);
+      if (!ok) {
+        truncated = true;
+        break;
+      }
+      continue;
+    }
+
+    if (typeof value === 'object') {
+      const ok = pushObjectChildren(value as Record<string, unknown>, path);
+      if (!ok) {
+        truncated = true;
+        break;
+      }
+    }
+  }
+
+  if (matches.length >= limit) truncated = true;
+
+  return {
+    type: 'searchResult',
+    id: req.id,
+    matches: matches.slice(0, limit),
+    truncated,
+    error: null,
+  };
+}
+
 self.onmessage = (event: MessageEvent<WorkerRequest>) => {
   const msg = event.data;
 
   let res: WorkerResponse | null = null;
   if (msg.type === 'compute') res = handleCompute(msg);
   else if (msg.type === 'suggest') res = handleSuggest(msg);
+  else if (msg.type === 'search') res = handleSearch(msg);
 
   if (res) self.postMessage(res);
 };

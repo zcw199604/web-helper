@@ -767,15 +767,19 @@ export default function ApiTester() {
                   </span>
                 </div>
 
-                <div className="flex-1 overflow-y-auto p-4">
+                <div className="flex-1 overflow-hidden">
                   {response.type.includes('application/json') ? (
-                    <JsonTree data={response.body} />
+                    <JsonTree className="h-full overflow-y-auto p-4" data={response.body} />
                   ) : response.type.includes('image') ? (
-                    <div className="flex items-center justify-center bg-white p-4 rounded-lg border border-gray-200">
-                      <img src={response.body} alt="Response" className="max-w-full max-h-[400px] object-contain" />
+                    <div className="h-full overflow-y-auto p-4">
+                      <div className="flex items-center justify-center bg-white p-4 rounded-lg border border-gray-200">
+                        <img src={response.body} alt="Response" className="max-w-full max-h-[400px] object-contain" />
+                      </div>
                     </div>
                   ) : (
-                    <pre className="whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-gray-700">{response.body}</pre>
+                    <pre className="h-full overflow-y-auto p-4 whitespace-pre-wrap font-mono text-[13px] leading-relaxed text-gray-700">
+                      {response.body}
+                    </pre>
                   )}
                 </div>
               </div>

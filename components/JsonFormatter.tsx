@@ -1,5 +1,5 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
-import { Copy, Check, Trash2, FileJson, AlignLeft, Minimize2, ShieldCheck, Code2, Network, Download, Search, X } from 'lucide-react';
+import { Copy, Check, Trash2, FileJson, AlignLeft, Minimize2, ShieldCheck, Code2, Network, Download, Search, TextSearch, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { JsonTree } from '@/components/ui/JsonTree';
 import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
@@ -27,6 +27,23 @@ type WorkerSuggestRequest = {
   limit: number;
 };
 
+type WorkerSearchRequest = {
+  type: 'search';
+  id: number;
+  sourceId: number;
+  text?: string;
+  query: string;
+  limit: number;
+  caseSensitive: boolean;
+  mode: 'key' | 'value' | 'both';
+};
+
+type WorkerSearchMatch = {
+  path: string;
+  preview: string;
+  matchIn: 'key' | 'value';
+};
+
 type WorkerResponse =
   | {
       type: 'computeResult';
@@ -40,6 +57,13 @@ type WorkerResponse =
       type: 'suggestResult';
       id: number;
       suggestions: string[];
+    }
+  | {
+      type: 'searchResult';
+      id: number;
+      matches: WorkerSearchMatch[];
+      truncated: boolean;
+      error: string | null;
     };
 
 function JsonFormatter() {
@@ -50,7 +74,7 @@ function JsonFormatter() {
   const [indent, setIndent] = useState(2);
   const [viewMode, setViewMode] = useState<'code' | 'tree'>('tree');
   const [outputMode, setOutputMode] = useState<OutputMode>('format');
-  const [expandAll, setExpandAll] = useState(true);
+  const [expandAll, setExpandAll] = useState(false);
   const [treeVersion, setTreeVersion] = useState(0);
   
   // JSONPath 相关状态
@@ -59,6 +83,16 @@ function JsonFormatter() {
   const [debouncedQueryInput, setDebouncedQueryInput] = useState('$.');
   const [queryError, setQueryError] = useState<string | null>(null);
   const [autoClearQuery, setAutoClearQuery] = useState(true);
+
+  // 全量搜索相关状态（Tree 虚拟列表下 Ctrl+F 无法覆盖未渲染节点）
+  const [showSearch, setShowSearch] = useState(false);
+  const [searchInput, setSearchInput] = useState('');
+  const [debouncedSearchInput, setDebouncedSearchInput] = useState('');
+  const [searchMatches, setSearchMatches] = useState<WorkerSearchMatch[]>([]);
+  const [searchTruncated, setSearchTruncated] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
+  const [activeSearchIndex, setActiveSearchIndex] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
   
   // 自动补全相关状态
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -73,10 +107,13 @@ function JsonFormatter() {
   const sourceIdRef = useRef(0);
   const lastTextSentSourceIdRef = useRef<number | null>(null);
   const computeTimerRef = useRef<number | undefined>(undefined);
+  const searchTimerRef = useRef<number | undefined>(undefined);
   const computeReqSeqRef = useRef(0);
   const latestComputeReqIdRef = useRef(0);
   const suggestReqSeqRef = useRef(0);
   const latestSuggestReqIdRef = useRef(0);
+  const searchReqSeqRef = useRef(0);
+  const latestSearchReqIdRef = useRef(0);
 
   // Keep latest view mode accessible in worker callbacks (avoid capturing stale state).
   useEffect(() => {
@@ -114,6 +151,12 @@ function JsonFormatter() {
         setSuggestions(msg.suggestions);
         setShowSuggestions(msg.suggestions.length > 0);
         setActiveSuggestionIndex(0);
+      } else if (msg.type === 'searchResult') {
+        if (msg.id !== latestSearchReqIdRef.current) return;
+        setSearchMatches(msg.matches);
+        setSearchTruncated(msg.truncated);
+        setSearchError(msg.error);
+        setActiveSearchIndex(0);
       }
     };
 
@@ -157,6 +200,37 @@ function JsonFormatter() {
       worker.postMessage(msg);
     },
     [debouncedQueryInput, indent, outputMode, showQuery]
+  );
+
+  const requestSearch = useCallback(
+    (forceText: boolean = false) => {
+      const worker = workerRef.current;
+      if (!worker) return;
+
+      const sourceId = sourceIdRef.current;
+      const includeText = forceText || lastTextSentSourceIdRef.current !== sourceId;
+
+      const id = ++searchReqSeqRef.current;
+      latestSearchReqIdRef.current = id;
+
+      const msg: WorkerSearchRequest = {
+        type: 'search',
+        id,
+        sourceId,
+        query: debouncedSearchInput,
+        limit: 200,
+        caseSensitive: false,
+        mode: 'both',
+      };
+
+      if (includeText) {
+        msg.text = inputRef.current;
+        lastTextSentSourceIdRef.current = sourceId;
+      }
+
+      worker.postMessage(msg);
+    },
+    [debouncedSearchInput]
   );
 
   // Avoid effects re-firing just because requestCompute is recreated when its deps change.
@@ -209,6 +283,51 @@ function JsonFormatter() {
     const timer = window.setTimeout(() => setDebouncedQueryInput(queryInput), 200);
     return () => window.clearTimeout(timer);
   }, [queryInput]);
+
+  // 防抖全量搜索输入
+  useEffect(() => {
+    if (!showSearch) return;
+    const timer = window.setTimeout(() => setDebouncedSearchInput(searchInput), 200);
+    return () => window.clearTimeout(timer);
+  }, [searchInput, showSearch]);
+
+  // 全量搜索：当 JSON 或搜索词变化时，触发 Worker 扫描（避免阻塞主线程）
+  useEffect(() => {
+    if (!showSearch) {
+      window.clearTimeout(searchTimerRef.current);
+      setSearchMatches([]);
+      setSearchTruncated(false);
+      setSearchError(null);
+      setActiveSearchIndex(0);
+      return;
+    }
+
+    if (!input.trim()) {
+      window.clearTimeout(searchTimerRef.current);
+      setSearchMatches([]);
+      setSearchTruncated(false);
+      setSearchError(null);
+      setActiveSearchIndex(0);
+      return;
+    }
+
+    const q = debouncedSearchInput.trim();
+    if (!q) {
+      window.clearTimeout(searchTimerRef.current);
+      setSearchMatches([]);
+      setSearchTruncated(false);
+      setSearchError(null);
+      setActiveSearchIndex(0);
+      return;
+    }
+
+    window.clearTimeout(searchTimerRef.current);
+    searchTimerRef.current = window.setTimeout(() => {
+      requestSearch(false);
+    }, 250);
+
+    return () => window.clearTimeout(searchTimerRef.current);
+  }, [debouncedSearchInput, input, requestSearch, showSearch]);
 
   // 缩进/输出模式变化：只需要重算输出文本，不需要重传/重算树
   useEffect(() => {
@@ -289,11 +408,38 @@ function JsonFormatter() {
     }
   };
 
+  const handleSearchKeyDown = (e: React.KeyboardEvent) => {
+    if (!showSearch) return;
+
+    if (e.key === 'Escape') {
+      setShowSearch(false);
+      return;
+    }
+
+    if (searchMatches.length === 0) return;
+
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      setActiveSearchIndex((prev) => (prev + 1) % searchMatches.length);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      setActiveSearchIndex((prev) => (prev - 1 + searchMatches.length) % searchMatches.length);
+    } else if (e.key === 'Enter') {
+      e.preventDefault();
+      const match = searchMatches[activeSearchIndex];
+      if (!match) return;
+      setShowSearch(false);
+      setQueryInput(match.path);
+      setShowQuery(true);
+    }
+  };
+
 
   // 手动触发格式化
   const handleFormat = useCallback(() => {
     setOutputMode('format');
     setShowQuery(false); // 退出查询模式
+    setShowSearch(false);
   }, []);
 
   // 压缩
@@ -304,6 +450,7 @@ function JsonFormatter() {
     }
     setOutputMode('minify');
     setShowQuery(false);
+    setShowSearch(false);
   }, []);
 
   // 复制
@@ -336,6 +483,14 @@ function JsonFormatter() {
     setError(null);
     setQueryError(null);
     setQueryInput('$.');
+    setShowQuery(false);
+    setShowSearch(false);
+    setSearchInput('');
+    setDebouncedSearchInput('');
+    setSearchMatches([]);
+    setSearchTruncated(false);
+    setSearchError(null);
+    setActiveSearchIndex(0);
     setSuggestions([]);
     setShowSuggestions(false);
     setDisplayData(undefined);
@@ -383,7 +538,7 @@ function JsonFormatter() {
               <div className="w-px h-4 bg-gray-200 mx-1"></div>
               <label
                 className="flex items-center gap-1.5 cursor-pointer text-xs select-none"
-                title="Tree 视图默认展开全部节点（大 JSON 可能更耗资源）"
+                title="Tree 视图展开全部节点（大 JSON 可能更耗资源）"
               >
                 <input
                   type="checkbox"
@@ -394,7 +549,7 @@ function JsonFormatter() {
                   }}
                   className="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                 />
-                <span className="text-gray-600">默认展开</span>
+                <span className="text-gray-600">全部展开</span>
               </label>
             </div>
 
@@ -411,7 +566,10 @@ function JsonFormatter() {
             </button>
 
             <button
-              onClick={() => setShowQuery(!showQuery)}
+              onClick={() => {
+                setShowSearch(false);
+                setShowQuery((prev) => !prev);
+              }}
               className={cn(
                 'btn gap-2 transition-all',
                 showQuery
@@ -423,13 +581,130 @@ function JsonFormatter() {
               <span>查询</span>
             </button>
 
+            <button
+              onClick={() => {
+                setShowQuery(false);
+                setShowSearch((prev) => {
+                  const next = !prev;
+                  if (next) {
+                    setTimeout(() => searchInputRef.current?.focus(), 0);
+                  }
+                  return next;
+                });
+              }}
+              className={cn(
+                'btn gap-2 transition-all',
+                showSearch
+                  ? 'bg-blue-100 text-blue-700 border border-blue-200 hover:bg-blue-200'
+                  : 'btn-secondary'
+              )}
+            >
+              <TextSearch className="w-4 h-4" />
+              <span>搜索</span>
+            </button>
+
             <button onClick={handleClear} className="btn btn-ghost p-2 text-gray-400 hover:text-red-500">
               <Trash2 className="w-5 h-5" />
             </button>
           </>
         }
         toolbar={
-          showQuery ? (
+          showSearch ? (
+            <div className="animate-in slide-in-from-top-2 duration-200 relative">
+              <div className="relative flex items-center">
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  value={searchInput}
+                  onChange={(e) => setSearchInput(e.target.value)}
+                  onKeyDown={handleSearchKeyDown}
+                  placeholder="全量搜索 key / value（支持大 JSON）"
+                  className={cn(
+                    "w-full pl-3 pr-10 py-2.5 bg-slate-50 border rounded-lg font-mono text-sm text-slate-700 focus:outline-none focus:ring-2 transition-all",
+                    searchError
+                      ? "border-red-300 focus:ring-red-200"
+                      : "border-slate-200 focus:ring-blue-500/20 focus:border-blue-500"
+                  )}
+                  autoComplete="off"
+                />
+                {searchInput.trim() && (
+                  <button
+                    onClick={() => setSearchInput('')}
+                    className="absolute right-3 text-slate-400 hover:text-slate-600 p-1"
+                    title="清空搜索"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                )}
+              </div>
+
+              {searchMatches.length > 0 ? (
+                <div className="mt-2 bg-white border border-slate-200 rounded-lg shadow-xl overflow-hidden">
+                  <div className="max-h-72 overflow-y-auto">
+                    {searchMatches.map((match, index) => (
+                      <button
+                        key={`${match.path}-${index}`}
+                        onClick={() => {
+                          setShowSearch(false);
+                          setQueryInput(match.path);
+                          setShowQuery(true);
+                        }}
+                        className={cn(
+                          "w-full text-left px-3 py-2 transition-colors",
+                          index === activeSearchIndex
+                            ? "bg-blue-50 text-blue-700"
+                            : "text-slate-700 hover:bg-blue-50"
+                        )}
+                      >
+                        <div className="flex items-center justify-between gap-3">
+                          <span className="font-mono text-sm truncate">{match.path}</span>
+                          <span
+                            className={cn(
+                              "text-[10px] font-semibold px-2 py-0.5 rounded-full border flex-shrink-0",
+                              match.matchIn === 'key'
+                                ? "bg-amber-50 text-amber-700 border-amber-100"
+                                : "bg-emerald-50 text-emerald-700 border-emerald-100"
+                            )}
+                          >
+                            {match.matchIn === 'key' ? 'KEY' : 'VALUE'}
+                          </span>
+                        </div>
+                        {match.preview ? (
+                          <div className="mt-0.5 text-xs text-slate-500 font-mono truncate">
+                            {match.preview}
+                          </div>
+                        ) : null}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="flex justify-between mt-1.5 px-1">
+                <span className={cn("text-xs", searchError ? "text-red-500 font-medium" : "text-slate-400")}>
+                  {searchError
+                    ? searchError
+                    : debouncedSearchInput.trim()
+                      ? `匹配 ${searchMatches.length}${searchTruncated ? '+' : ''} 条`
+                      : '输入关键词后开始搜索（key/value，不区分大小写）'}
+                </span>
+                {debouncedSearchInput.trim() && searchMatches[activeSearchIndex] ? (
+                  <button
+                    onClick={() => {
+                      const match = searchMatches[activeSearchIndex];
+                      if (!match) return;
+                      setShowSearch(false);
+                      setQueryInput(match.path);
+                      setShowQuery(true);
+                    }}
+                    className="text-xs text-blue-500 hover:text-blue-600 hover:underline"
+                  >
+                    打开当前
+                  </button>
+                ) : null}
+              </div>
+            </div>
+          ) : showQuery ? (
             <div className="animate-in slide-in-from-top-2 duration-200 relative">
                 <div className="relative flex items-center">
                      <input 
@@ -606,7 +881,7 @@ function JsonFormatter() {
                     spellCheck={false}
                 />
              ) : (
-                 <div className="absolute inset-0 w-full h-full overflow-auto p-4 custom-scrollbar">
+                 <div className="absolute inset-0 w-full h-full overflow-hidden">
                     {displayData !== undefined ? (
                         <JsonTree 
                             key={`json-tree-${treeVersion}`}
@@ -615,9 +890,10 @@ function JsonFormatter() {
                             path="$"
                             expandAll={expandAll}
                             onFillPath={handleFillPath}
+                            className="h-full w-full overflow-auto p-4 custom-scrollbar"
                         />
                     ) : (
-                        <div className="flex flex-col items-center justify-center h-full text-slate-400">
+                        <div className="flex flex-col items-center justify-center h-full text-slate-400 p-4">
                              {showQuery ? <Search className="w-8 h-8 mb-2 opacity-50" /> : <Network className="w-8 h-8 mb-2 opacity-50" />}
                              <p className="text-sm">{showQuery ? "查询结果为空或语法错误" : "无法解析为 JSON 对象"}</p>
                         </div>

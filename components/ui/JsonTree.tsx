@@ -1,6 +1,13 @@
-import { useState } from 'react';
-import { ChevronRight, ChevronDown, Copy, Download, Check, CornerLeftUp } from 'lucide-react';
+import { memo, useCallback, useMemo, useRef, useState, useTransition } from 'react';
+import { useVirtualizer } from '@tanstack/react-virtual';
 import { cn } from '@/utils/cn';
+import {
+  CloseRowView,
+  ContainerRowView,
+  LeafRowView,
+  MoreRowView,
+  type TreeRow,
+} from './json-tree/rows';
 
 interface JsonTreeProps {
   data: any;
@@ -11,16 +18,19 @@ interface JsonTreeProps {
   expandAll?: boolean;
   path?: string;
   onFillPath?: (path: string) => void;
+  className?: string;
 }
 
-const CHILD_PAGE_SIZE = 200;
+// Keep initial renders small; users can progressively reveal more.
+const CHILD_PAGE_SIZE = 100;
+const SIMPLE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
-// 简单的类型判断
-const getType = (value: any) => {
+// Simple type detection for JSON-ish values.
+function getType(value: any) {
   if (value === null) return 'null';
   if (Array.isArray(value)) return 'array';
   return typeof value;
-};
+}
 
 function isEmptyPlainObject(value: Record<string, unknown>): boolean {
   // Avoid `Object.keys` for large objects: no array allocation, early exit.
@@ -47,273 +57,217 @@ function takeOwnKeys(value: Record<string, unknown>, limit: number): { keys: str
   return { keys, hasMore: false };
 }
 
-// 下载 JSON 文件
-const downloadJson = (data: any, fileName: string) => {
-  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url;
-  a.download = fileName.endsWith('.json') ? fileName : `${fileName}.json`;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-};
-
-export function JsonTree({ 
-  data, 
-  name, 
-  isLast = true, 
-  level = 0, 
-  // Default: only expand root. Deep auto-expand can explode DOM for large JSON.
+function JsonTreeImpl({
+  data,
+  name,
+  isLast = true,
+  level = 0,
   initiallyExpanded,
   expandAll,
   path = '$',
-  onFillPath
+  onFillPath,
+  className,
 }: JsonTreeProps) {
-  const expandedByDefault = expandAll ? true : (initiallyExpanded ?? level === 0);
-  const [isExpanded, setIsExpanded] = useState(expandedByDefault);
-  const [copied, setCopied] = useState(false);
-  const [visibleCount, setVisibleCount] = useState(CHILD_PAGE_SIZE);
-  const type = getType(data);
-  const isObject = type === 'object' || type === 'array';
-  const isEmpty =
-    !isObject ? false : type === 'array' ? (data as any[]).length === 0 : isEmptyPlainObject(data as Record<string, unknown>);
-  
-  // 处理复制
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await navigator.clipboard.writeText(JSON.stringify(data, null, 2));
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const [isPending, startTransition] = useTransition();
+  const [toggledPaths, setToggledPaths] = useState<Set<string>>(() => new Set());
+  const [visibleCountByPath, setVisibleCountByPath] = useState<Map<string, number>>(() => new Map());
 
-  // 处理下载
-  const handleDownload = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const fileName = name || 'data';
-    downloadJson(data, fileName);
-  };
+  const rootDefaultExpanded = expandAll ? true : (initiallyExpanded ?? level === 0);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
 
-  // 处理填充 Path
-  const handleFillPath = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    onFillPath?.(path);
-  };
+  const onToggle = useCallback(
+    (nodePath: string) => {
+      startTransition(() => {
+        setToggledPaths((prev) => {
+          const next = new Set(prev);
+          if (next.has(nodePath)) next.delete(nodePath);
+          else next.add(nodePath);
+          return next;
+        });
+      });
+    },
+    [startTransition]
+  );
 
-  const renderValue = (val: any) => {
-    const valType = getType(val);
-    switch (valType) {
-      case 'string':
-        return <span className="text-green-600">"{val}"</span>;
-      case 'number':
-        return <span className="text-orange-600">{val}</span>;
-      case 'boolean':
-        return <span className="text-blue-600 font-bold">{String(val)}</span>;
-      case 'null':
-        return <span className="text-gray-500 font-bold">null</span>;
-      default:
-        return <span>{String(val)}</span>;
-    }
-  };
+  const onShowMore = useCallback(
+    (nodePath: string) => {
+      startTransition(() => {
+        setVisibleCountByPath((prev) => {
+          const next = new Map(prev);
+          const current = next.get(nodePath) ?? CHILD_PAGE_SIZE;
+          next.set(nodePath, current + CHILD_PAGE_SIZE);
+          return next;
+        });
+      });
+    },
+    [startTransition]
+  );
 
-  // 非对象类型 (叶子节点)
-  if (!isObject) {
-    return (
-      <div className="flex items-start hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5 font-mono text-sm leading-6 group">
-        <div style={{ paddingLeft: `${level * 20}px` }} className="flex-1 break-all flex items-center">
-           <div className="flex-1">
-              {name && <span className="text-purple-700 font-medium">"{name}"</span>}
-              {name && <span className="text-slate-500 mr-2">:</span>}
-              {renderValue(data)}
-              {!isLast && <span className="text-slate-500">,</span>}
-           </div>
+  const rows = useMemo(() => {
+    const out: TreeRow[] = [];
 
-           {/* 叶子节点也添加操作按钮 */}
-            {onFillPath && (
-                <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity px-2">
-                     <button
-                        onClick={handleFillPath}
-                        className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
-                        title="填充 JSONPath"
-                        >
-                        <CornerLeftUp className="w-3.5 h-3.5" />
-                    </button>
-                    {/* 叶子节点通常不需要单独下载/复制整个对象，但如果用户需要也可以加上，这里主要响应 Fill Path 需求 */}
-                </div>
-            )}
-        </div>
-      </div>
-    );
-  }
+    const isExpandedFor = (nodePath: string, depth: number) => {
+      const defaultExpanded = depth === 0 ? rootDefaultExpanded : !!expandAll;
+      return toggledPaths.has(nodePath) ? !defaultExpanded : defaultExpanded;
+    };
 
-  const BracketOpen = type === 'array' ? '[' : '{';
-  const BracketClose = type === 'array' ? ']' : '}';
+    const visibleCountFor = (nodePath: string) => visibleCountByPath.get(nodePath) ?? CHILD_PAGE_SIZE;
+
+    const visit = (
+      value: any,
+      nodeName: string | undefined,
+      nodePath: string,
+      nodeLevel: number,
+      nodeIsLast: boolean,
+      depth: number
+    ) => {
+      const t = getType(value);
+
+      if (t !== 'object' && t !== 'array') {
+        out.push({
+          kind: 'leaf',
+          id: nodePath,
+          level: nodeLevel,
+          name: nodeName,
+          path: nodePath,
+          value,
+          isLast: nodeIsLast,
+        });
+        return;
+      }
+
+      const containerType: 'array' | 'object' = t === 'array' ? 'array' : 'object';
+      const isEmpty =
+        containerType === 'array'
+          ? (value as any[]).length === 0
+          : isEmptyPlainObject(value as Record<string, unknown>);
+
+      const isExpanded = !isEmpty && isExpandedFor(nodePath, depth);
+      out.push({
+        kind: 'container',
+        id: nodePath,
+        level: nodeLevel,
+        name: nodeName,
+        path: nodePath,
+        value,
+        containerType,
+        isEmpty,
+        isExpanded,
+        isLast: nodeIsLast,
+        arrayLength: containerType === 'array' ? (value as any[]).length : undefined,
+      });
+
+      if (isEmpty || !isExpanded) return;
+
+      const childLevel = nodeLevel + 1;
+
+      if (containerType === 'array') {
+        const arr = value as any[];
+        const total = arr.length;
+        const visibleCount = visibleCountFor(nodePath);
+        const end = Math.min(total, visibleCount);
+
+        for (let index = 0; index < end; index += 1) {
+          visit(arr[index], undefined, `${nodePath}[${index}]`, childLevel, index === total - 1, depth + 1);
+        }
+
+        if (total > visibleCount) {
+          out.push({
+            kind: 'more',
+            id: `${nodePath}#more`,
+            level: childLevel,
+            path: nodePath,
+            label: `显示更多...（已显示 ${end} / ${total}）`,
+          });
+        }
+      } else {
+        const obj = value as Record<string, unknown>;
+        const visibleCount = visibleCountFor(nodePath);
+        const { keys, hasMore } = takeOwnKeys(obj, visibleCount);
+        const end = keys.length;
+
+        for (let i = 0; i < end; i += 1) {
+          const key = keys[i];
+          const isSimpleKey = SIMPLE_KEY_RE.test(key);
+          const childPath = isSimpleKey ? `${nodePath}.${key}` : `${nodePath}[${JSON.stringify(key)}]`;
+          visit(obj[key], key, childPath, childLevel, !hasMore && i === end - 1, depth + 1);
+        }
+
+        if (hasMore) {
+          out.push({
+            kind: 'more',
+            id: `${nodePath}#more`,
+            level: childLevel,
+            path: nodePath,
+            label: `显示更多...（已显示 ${end}+）`,
+          });
+        }
+      }
+
+      out.push({
+        kind: 'close',
+        id: `${nodePath}#end`,
+        level: childLevel,
+        path: nodePath,
+        containerType,
+        isLast: nodeIsLast,
+      });
+    };
+
+    visit(data, name, path, level, isLast, 0);
+    return out;
+  }, [data, expandAll, isLast, level, name, path, rootDefaultExpanded, toggledPaths, visibleCountByPath]);
+
+  const rowVirtualizer = useVirtualizer({
+    count: rows.length,
+    getScrollElement: () => scrollRef.current,
+    estimateSize: () => 24,
+    overscan: 10,
+    getItemKey: (index) => rows[index]?.id ?? index,
+  });
 
   return (
-    <div className="font-mono text-sm leading-6">
-      <div 
-        className={cn(
-          "flex items-center gap-1 hover:bg-slate-100/80 rounded px-1 -ml-1 py-0.5 cursor-pointer group select-none transition-colors",
-          isEmpty && "cursor-default"
-        )}
-        onClick={() => !isEmpty && setIsExpanded(!isExpanded)}
+    <div ref={scrollRef} className={cn('min-h-0', className, isPending && 'opacity-90')}>
+      <div
+        style={{
+          height: rowVirtualizer.getTotalSize(),
+          width: '100%',
+          position: 'relative',
+        }}
       >
-        <div style={{ paddingLeft: `${level * 20}px` }} className="flex items-center gap-1">
-          {/* 展开/折叠图标 */}
-          {!isEmpty ? (
-            <div className="w-4 h-4 flex items-center justify-center text-slate-400">
-              {isExpanded ? <ChevronDown className="w-3.5 h-3.5" /> : <ChevronRight className="w-3.5 h-3.5" />}
+        {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+          const row = rows[virtualRow.index];
+          if (!row) return null;
+
+          return (
+            <div
+              key={virtualRow.key}
+              data-index={virtualRow.index}
+              ref={rowVirtualizer.measureElement}
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                transform: `translateY(${virtualRow.start}px)`,
+              }}
+            >
+              {row.kind === 'leaf' ? (
+                <LeafRowView row={row} onFillPath={onFillPath} />
+              ) : row.kind === 'container' ? (
+                <ContainerRowView row={row} onToggle={onToggle} onFillPath={onFillPath} />
+              ) : row.kind === 'more' ? (
+                <MoreRowView row={row} onShowMore={onShowMore} />
+              ) : (
+                <CloseRowView row={row} />
+              )}
             </div>
-          ) : (
-            <div className="w-4 h-4" /> 
-          )}
-
-          {/* 属性名 */}
-          {name && (
-            <>
-              <span className="text-purple-700 font-medium">"{name}"</span>
-              <span className="text-slate-500">:</span>
-            </>
-          )}
-
-          {/* 括号和摘要 */}
-          <span className="text-slate-600 font-medium">{BracketOpen}</span>
-          {!isExpanded && !isEmpty && (
-            <span className="text-slate-400 mx-1 text-xs">...</span>
-          )}
-          {isEmpty && <span className="text-slate-600 font-medium">{BracketClose}</span>}
-          
-          {/* 数组长度提示 */}
-          {type === 'array' && !isExpanded && (
-            <span className="text-slate-400 text-xs ml-1">({(data as any[]).length} items)</span>
-          )}
-        </div>
-
-        {/* 操作按钮 (仅在 hover 时显示，且非空对象) */}
-        <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity px-2">
-            {onFillPath && (
-                 <button
-                    onClick={handleFillPath}
-                    className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
-                    title="填充 JSONPath"
-                 >
-                    <CornerLeftUp className="w-3.5 h-3.5" />
-                 </button>
-            )}
-            <button
-              onClick={handleCopy}
-              className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
-              title="复制此节点内容"
-            >
-              {copied ? <Check className="w-3.5 h-3.5 text-green-500" /> : <Copy className="w-3.5 h-3.5" />}
-            </button>
-            <button
-              onClick={handleDownload}
-              className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
-              title="下载此节点内容"
-            >
-              <Download className="w-3.5 h-3.5" />
-            </button>
-        </div>
+          );
+        })}
       </div>
-
-      {/* 子节点 */}
-      {isExpanded && !isEmpty && (
-        <div>
-          {type === 'array'
-            ? (() => {
-                const total = (data as any[]).length;
-                const end = Math.min(total, visibleCount);
-                return (
-                  <>
-                    {Array.from({ length: end }, (_, index) => {
-                      const childPath = `${path}[${index}]`;
-                      return (
-                    <JsonTree
-                      key={index}
-                      name={undefined}
-                      data={(data as any[])[index]}
-                      isLast={index === total - 1}
-                      level={level + 1}
-                      expandAll={expandAll}
-                      path={childPath}
-                      onFillPath={onFillPath}
-                    />
-                  );
-                })}
-                    {total > visibleCount ? (
-                      <div
-                        className="hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5"
-                        style={{ paddingLeft: `${level * 20 + 20}px` }}
-                      >
-                        <button
-                          onClick={() => setVisibleCount((c) => c + CHILD_PAGE_SIZE)}
-                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
-                        >
-                          显示更多...（已显示 {end} / {total}）
-                        </button>
-                      </div>
-                    ) : null}
-                  </>
-                );
-              })()
-            : (() => {
-                const { keys, hasMore } = takeOwnKeys(data as Record<string, unknown>, visibleCount);
-                const end = keys.length;
-
-                return (
-                  <>
-                    {keys.map((key, index) => {
-                      const isSimpleKey = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/.test(key);
-                      const childPath = isSimpleKey ? `${path}.${key}` : `${path}[${JSON.stringify(key)}]`;
-
-                      return (
-                        <JsonTree
-                          key={key}
-                          name={key}
-                          data={(data as Record<string, unknown>)[key]}
-                          isLast={!hasMore && index === end - 1}
-                          level={level + 1}
-                          expandAll={expandAll}
-                          path={childPath}
-                          onFillPath={onFillPath}
-                        />
-                      );
-                    })}
-                    {hasMore ? (
-                      <div
-                        className="hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5"
-                        style={{ paddingLeft: `${level * 20 + 20}px` }}
-                      >
-                        <button
-                          onClick={() => setVisibleCount((c) => c + CHILD_PAGE_SIZE)}
-                          className="text-xs text-blue-600 hover:text-blue-700 hover:underline"
-                        >
-                          显示更多...（已显示 {end}+）
-                        </button>
-                      </div>
-                    ) : null}
-                  </>
-                );
-              })()}
-          <div 
-             className="hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5"
-             style={{ paddingLeft: `${level * 20 + 20}px` }}
-          >
-             <span className="text-slate-600 font-medium">{BracketClose}</span>
-             {!isLast && <span className="text-slate-500">,</span>}
-          </div>
-        </div>
-      )}
-       
-       {/* 折叠时的闭合括号 (非空且未展开时显示) */}
-       {!isExpanded && !isEmpty && (
-          <div className="inline-block">
-             <span className="text-slate-600 font-medium">{BracketClose}</span>
-             {!isLast && <span className="text-slate-500">,</span>}
-          </div>
-       )}
     </div>
   );
 }
+
+export const JsonTree = memo(JsonTreeImpl);
+
