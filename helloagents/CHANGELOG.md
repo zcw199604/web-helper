@@ -13,7 +13,7 @@
 ### 变更
 - Popup 菜单：支持通过 `popupVisibleToolIds` 配置展示模块，并与面板共用工具注册表避免不一致
 - UI：Popup 与 tools 面板调整为「One API Hub」同款清爽风（白底 + 浅灰背景 + 蓝色强调 + 轻边框阴影）
-- UI：tools.html 宽度上限提升至 `max-w-screen-2xl`，改善分栏工具（如 JSON 格式化）在大屏下的编辑区可用宽度
+- UI：tools.html 改为全宽 + 窄屏紧凑布局：左侧导航默认折叠为图标栏，收紧外边距/间距与 ToolHeader 内边距，扩大主内容可用空间
 - UI：切换为「柔和空气（Soft Air）」风格（slate-50 底色、圆角卡片、弱化分割线/阴影、导航高亮更克制）
 - UI：提升全局默认行高，并增大 Popup/侧边栏导航的行高与内边距，缓解排版拥挤
 - UI：tools.html 使用视口级布局（`h-screen` + `min-h-0`），并为多个工具页引入统一 `ToolHeader/ToolMain` 布局骨架

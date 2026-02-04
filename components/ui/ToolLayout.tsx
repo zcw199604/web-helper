@@ -40,14 +40,14 @@ export function ToolHeader({
 }: ToolHeaderProps) {
   return (
     <div className={cn('flex-none bg-white border-b border-slate-100', className)}>
-      <div className={cn('px-6 py-5', toolbar ? 'pb-4' : '')}>
+      <div className={cn('px-4 py-3 sm:px-6 sm:py-4', toolbar ? 'pb-3 sm:pb-4' : '')}>
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-start gap-3 min-w-0">
             {icon ? (
               <div className={cn('p-2 rounded-lg flex-shrink-0', iconClassName)}>{icon}</div>
             ) : null}
             <div className="min-w-0">
-              <h2 className="text-[15px] font-semibold text-slate-900 leading-6 tracking-tight">
+              <h2 className="text-sm sm:text-[15px] font-semibold text-slate-900 leading-6 tracking-tight">
                 {title}
               </h2>
               {description ? (
@@ -61,7 +61,7 @@ export function ToolHeader({
           ) : null}
         </div>
 
-        {toolbar ? <div className="mt-4">{toolbar}</div> : null}
+        {toolbar ? <div className="mt-3 sm:mt-4">{toolbar}</div> : null}
       </div>
     </div>
   );
