@@ -31,7 +31,7 @@
 
 ### 核心功能
 - JSON 格式化/压缩/校验
-- Base64 / URL 编解码
+- 编码/解码工具（Unicode、URL、UTF16(\x)、Base64、Hex、HTML、Gzip）与 MD5/SHA1
 - Cron 表达式解析与可读化
 - JWT 解码
 - API 调试

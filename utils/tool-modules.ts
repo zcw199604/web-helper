@@ -35,7 +35,7 @@ export const TOOL_MODULES: ToolModule[] = [
   {
     id: 'encoding',
     name: '编码转换',
-    description: 'Base64 / URL 编解码',
+    description: 'Unicode / URL / Base64 / HTML / Gzip / Hash 等',
     icon: Settings2,
     popupStyle: {
       color: 'text-indigo-600',

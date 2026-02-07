@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### 新增
+- **[encoding-tools]**: 编码转换工具扩展 21 项能力（Unicode/URL/UTF16(\x)/Base64/Hex/HTML/Gzip、MD5/SHA1、URL参数解析、JWT解码、Cookie格式化）
+  - 方案: [202602070507_encoding-encrypt-decrypt-tools](archive/2026-02/202602070507_encoding-encrypt-decrypt-tools/)
+  - 决策: encoding-encrypt-decrypt-tools#D001(操作注册表驱动), encoding-encrypt-decrypt-tools#D002(crypto-js + pako)
 - cURL / fetch → Markdown：支持 Markdown 渲染预览（下载前检查排版）
 - WebSocket 调试：新增工具页（扩展面板/页面上下文连接、Text/JSON/Binary、日志搜索/过滤、自动重连、心跳）
 
@@ -30,6 +33,9 @@
 ## [1.3.0] - 2026-01-19
 
 ### 新增
+- **[encoding-tools]**: 编码转换工具扩展 21 项能力（Unicode/URL/UTF16(\x)/Base64/Hex/HTML/Gzip、MD5/SHA1、URL参数解析、JWT解码、Cookie格式化）
+  - 方案: [202602070507_encoding-encrypt-decrypt-tools](archive/2026-02/202602070507_encoding-encrypt-decrypt-tools/)
+  - 决策: encoding-encrypt-decrypt-tools#D001(操作注册表驱动), encoding-encrypt-decrypt-tools#D002(crypto-js + pako)
 - 初始化知识库：`helloagents/`（项目文档、模块说明、变更历史索引）
 - 新增工具页：cURL → Markdown 文档生成（支持 Copy as cURL，预览/复制/下载）
 - 新增依赖：`shellwords`（cURL 分词）、`@types/chrome`（TypeScript 类型支持）

@@ -1,8 +1,12 @@
-import { useState, useCallback } from 'react';
-import { Copy, Check, Trash2, ArrowDownUp, Binary, Link, List, Settings2 } from 'lucide-react';
-import { encodeBase64, decodeBase64, isValidBase64 } from '@/utils/base64';
-import { encodeUrl, decodeUrl, parseQueryParams } from '@/utils/url';
+import { useCallback, useMemo, useState } from 'react';
+import { ArrowDownUp, Check, Copy, Lock, Trash2, Unlock } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import {
+  ENCODING_OPERATIONS,
+  type EncodingOperationDefinition,
+  type EncodingOperationGroup,
+  runEncodingOperation,
+} from '@/utils/encoding-toolkit';
 import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
 
 function EncodingTools() {
@@ -10,79 +14,42 @@ function EncodingTools() {
   const [output, setOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  
-  // URL 参数相关状态
-  const [params, setParams] = useState<Record<string, string>>({});
-  const [showParams, setShowParams] = useState(false);
+  const [activeOperationId, setActiveOperationId] = useState<string | null>(null);
 
-  // 通用处理函数
-  const handleAction = useCallback((action: (val: string) => string, validate?: (val: string) => boolean, errorMsg?: string) => {
-    if (!input.trim()) {
-      setError('请输入内容');
-      return;
-    }
-    if (validate && !validate(input)) {
-      setError(errorMsg || '输入格式无效');
-      return;
-    }
-    try {
-      const result = action(input);
-      setOutput(result);
-      setError(null);
-      // 如果是 URL 操作，顺便尝试解析参数，但不强制显示
-      // 如果不是 URL 操作，隐藏参数面板
-      setShowParams(false); 
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, [input]);
+  const encryptOperations = useMemo(
+    () => ENCODING_OPERATIONS.filter((operation) => operation.group === 'encrypt'),
+    [],
+  );
+  const decryptOperations = useMemo(
+    () => ENCODING_OPERATIONS.filter((operation) => operation.group === 'decrypt'),
+    [],
+  );
 
-  // Base64
-  const handleBase64Encode = () => handleAction(encodeBase64);
-  const handleBase64Decode = () => handleAction(decodeBase64, isValidBase64, '无效的 Base64 字符串');
+  const activeOperation = useMemo(
+    () => ENCODING_OPERATIONS.find((operation) => operation.id === activeOperationId) ?? null,
+    [activeOperationId],
+  );
 
-  // URL
-  const handleUrlEncode = () => handleAction(encodeUrl);
-  const handleUrlDecode = () => {
-      handleAction((val) => {
-          const res = decodeUrl(val);
-          // 尝试自动解析参数
-          try {
-            const parsed = parseQueryParams(res);
-            if (Object.keys(parsed).length > 0) {
-                setParams(parsed);
-                // 这里可以选择是否自动展开，暂不自动展开以免干扰，除非是专门点了解析
-            }
-          } catch {}
-          return res;
-      });
-  };
+  const handleOperation = useCallback(
+    (operation: EncodingOperationDefinition) => {
+      try {
+        const result = runEncodingOperation(operation.id, input);
+        setOutput(result);
+        setError(null);
+        setActiveOperationId(operation.id);
+      } catch (e) {
+        setError((e as Error).message);
+      }
+    },
+    [input],
+  );
 
-  // 单独解析 URL 参数
-  const handleParseParams = useCallback(() => {
-    if (!input.trim()) return;
-    try {
-      // 优先解析 output，如果没有 output 则解析 input
-      // 实际上用户可能想解析输入框里的 URL
-      const target = input; 
-      const parsed = parseQueryParams(target);
-      setParams(parsed);
-      setShowParams(true);
-      setError(null);
-    } catch (e) {
-      setError((e as Error).message);
-    }
-  }, [input]);
-
-  // 交换
   const handleSwap = useCallback(() => {
     setInput(output);
     setOutput('');
     setError(null);
-    setShowParams(false);
   }, [output]);
 
-  // 复制
   const handleCopy = useCallback(async () => {
     if (!output) return;
     await navigator.clipboard.writeText(output);
@@ -90,169 +57,170 @@ function EncodingTools() {
     setTimeout(() => setCopied(false), 2000);
   }, [output]);
 
-  // 清空
   const handleClear = useCallback(() => {
     setInput('');
     setOutput('');
-    setParams({});
-    setShowParams(false);
     setError(null);
+    setActiveOperationId(null);
   }, []);
 
   return (
     <ToolPageShell>
       <ToolHeader
         title="编码转换"
-        description="Base64 / URL 编码与解码"
-        icon={<Settings2 className="w-5 h-5" />}
+        description="加密/解密（Unicode、URL、Base64、HTML、Hash、JWT、Cookie、Gzip）"
+        icon={<Lock className="w-5 h-5" />}
         iconClassName="bg-indigo-50 text-indigo-600"
         toolbar={
-          <div className="flex flex-wrap items-center gap-3">
-          
-          {/* Base64 Group */}
-          <div className="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200">
-             <div className="px-2 text-xs font-semibold text-gray-400 flex items-center gap-1">
-                <Binary className="w-3.5 h-3.5" />
-                Base64
-             </div>
-             <div className="w-px h-4 bg-gray-200 mx-1"></div>
-             <button onClick={handleBase64Encode} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
-                编码
-             </button>
-             <button onClick={handleBase64Decode} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-blue-600 hover:bg-white rounded-md transition-all">
-                解码
-             </button>
-          </div>
-
-          {/* URL Group */}
-          <div className="flex items-center bg-gray-50 p-1 rounded-lg border border-gray-200">
-             <div className="px-2 text-xs font-semibold text-gray-400 flex items-center gap-1">
-                <Link className="w-3.5 h-3.5" />
-                URL
-             </div>
-             <div className="w-px h-4 bg-gray-200 mx-1"></div>
-             <button onClick={handleUrlEncode} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-emerald-600 hover:bg-white rounded-md transition-all">
-                编码
-             </button>
-             <button onClick={handleUrlDecode} className="px-3 py-1.5 text-xs font-medium text-gray-600 hover:text-emerald-600 hover:bg-white rounded-md transition-all">
-                解码
-             </button>
-          </div>
-
-          <div className="h-6 w-px bg-gray-200 mx-1" />
-
-          <button 
-            onClick={handleParseParams} 
-            className="btn btn-secondary gap-2 px-3 py-1.5 text-xs"
-            title="解析 URL 参数"
-          >
-            <List className="w-4 h-4" />
-            <span className="hidden sm:inline">参数</span>
-          </button>
-
-          <button 
-            onClick={handleSwap} 
-            disabled={!output}
-            className="btn btn-secondary gap-2 px-3 py-1.5 text-xs"
-            title="交换输入输出"
-          >
-            <ArrowDownUp className="w-4 h-4" />
-          </button>
-          
-          <button onClick={handleClear} className="btn btn-ghost p-2 text-slate-400 hover:text-red-500">
-            <Trash2 className="w-5 h-5" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={handleSwap}
+              disabled={!output}
+              className="btn btn-secondary gap-2 px-3 py-1.5 text-xs"
+              title="交换输入输出"
+            >
+              <ArrowDownUp className="w-4 h-4" />
+              <span className="hidden sm:inline">交换</span>
+            </button>
+            <button onClick={handleClear} className="btn btn-ghost p-2 text-slate-400 hover:text-red-500">
+              <Trash2 className="w-5 h-5" />
+            </button>
           </div>
         }
       />
 
-      {/* 错误提示 */}
       {error && (
         <div className="px-6 pt-4">
-          <div className="p-3 bg-red-50 border border-red-100 rounded-lg text-red-600 text-sm animate-in fade-in slide-in-from-top-2">
-            {error}
-          </div>
+          <div className="rounded-lg border border-red-100 bg-red-50 p-3 text-sm text-red-600">{error}</div>
         </div>
       )}
 
-      {/* 主编辑区 */}
-      <ToolMain className="grid grid-cols-2 divide-x divide-slate-100 min-h-0 overflow-hidden">
-        {/* 输入区 */}
-        <div className="flex flex-col h-full bg-slate-50/30">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Input</span>
+      <ToolMain className="grid min-h-0 grid-cols-2 divide-x divide-slate-100 overflow-hidden">
+        <div className="flex h-full flex-col bg-slate-50/30">
+          <div className="border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+            <div className="mb-3 flex items-center justify-between">
+              <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">操作面板</span>
+              <span className="text-xs text-slate-400">{ENCODING_OPERATIONS.length} tools</span>
+            </div>
+
+            <OperationGroup
+              title="加密 / 编码"
+              group="encrypt"
+              operations={encryptOperations}
+              activeOperationId={activeOperationId}
+              onRun={handleOperation}
+            />
+
+            <div className="my-3 h-px bg-slate-200" />
+
+            <OperationGroup
+              title="解密 / 解码"
+              group="decrypt"
+              operations={decryptOperations}
+              activeOperationId={activeOperationId}
+              onRun={handleOperation}
+            />
+
+            <div className="mt-3 rounded-md border border-slate-200 bg-white px-3 py-2 text-xs text-slate-500">
+              {activeOperation ? (
+                <>
+                  <span className="font-medium text-slate-700">当前操作：</span>
+                  <span>{activeOperation.label}</span>
+                  <span className="mx-1 text-slate-300">|</span>
+                  <span>{activeOperation.hint}</span>
+                </>
+              ) : (
+                <span>提示：请输入文本后，点击上方任意操作按钮。</span>
+              )}
+            </div>
+          </div>
+
+          <div className="flex items-center justify-between border-b border-slate-100 bg-slate-50/50 px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Input</span>
             <span className="text-xs text-slate-400">{input.length} chars</span>
           </div>
+
           <textarea
             value={input}
-            onChange={(e) => setInput(e.target.value)}
-            placeholder="在此输入文本或 URL..."
-            className="flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none focus:bg-white transition-colors custom-scrollbar leading-relaxed"
+            onChange={(event) => setInput(event.target.value)}
+            placeholder="在此输入文本、URL、JWT、Cookie 或 Gzip Base64..."
+            className="custom-scrollbar flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-slate-700 transition-colors focus:bg-white focus:outline-none"
           />
         </div>
 
-        {/* 输出区 */}
-        <div className="flex flex-col h-full bg-white relative group">
-          <div className="px-4 py-3 border-b border-slate-100 flex items-center justify-between bg-white">
-            <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">Output</span>
+        <div className="group relative flex h-full flex-col bg-white">
+          <div className="flex items-center justify-between border-b border-slate-100 bg-white px-4 py-3">
+            <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Output</span>
             <button
               onClick={handleCopy}
               disabled={!output}
               className={cn(
-                'flex items-center gap-1.5 px-2 py-1 rounded-md text-xs font-medium transition-all',
-                output
-                  ? 'text-slate-600 hover:bg-slate-100 active:scale-95'
-                  : 'text-slate-300 cursor-not-allowed'
+                'flex items-center gap-1.5 rounded-md px-2 py-1 text-xs font-medium transition-all',
+                output ? 'text-slate-600 hover:bg-slate-100 active:scale-95' : 'cursor-not-allowed text-slate-300',
               )}
             >
               {copied ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-green-500" />
+                  <Check className="h-3.5 w-3.5 text-green-500" />
                   <span className="text-green-600">已复制</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="h-3.5 w-3.5" />
                   <span>复制结果</span>
                 </>
               )}
             </button>
           </div>
-          
-          <div className="flex-1 relative overflow-hidden flex flex-col">
-              <textarea
-                value={output}
-                readOnly
-                placeholder="结果..."
-                className={cn(
-                    "flex-1 p-4 bg-transparent resize-none font-mono text-sm text-slate-700 focus:outline-none custom-scrollbar leading-relaxed selection:bg-indigo-100 selection:text-indigo-900",
-                    showParams ? "h-1/2 border-b border-slate-100" : "h-full"
-                )}
-              />
-              
-              {/* 参数列表面板 */}
-              {showParams && (
-                <div className="flex-1 bg-slate-50 flex flex-col min-h-0 animate-in slide-in-from-bottom-4 duration-300">
-                    <div className="px-4 py-3 bg-slate-100 border-b border-slate-200 flex items-center justify-between">
-                         <span className="text-xs font-semibold text-slate-500 uppercase tracking-wider">URL Parameters</span>
-                         <button onClick={() => setShowParams(false)} className="text-slate-400 hover:text-slate-600">
-                             <span className="text-xs">Close</span>
-                         </button>
-                    </div>
-                    <div className="overflow-y-auto p-0">
-                        {Object.entries(params).map(([key, value], i) => (
-                        <div key={key} className={cn("flex px-4 py-2 hover:bg-white transition-colors text-sm border-b border-slate-100 last:border-0", i % 2 === 0 ? "bg-slate-50/50" : "")}>
-                            <span className="font-medium text-emerald-600 w-1/3 break-all pr-2">{key}</span>
-                            <span className="text-slate-700 font-mono w-2/3 break-all select-all">{value}</span>
-                        </div>
-                        ))}
-                    </div>
-                </div>
-              )}
-          </div>
+
+          <textarea
+            value={output}
+            readOnly
+            placeholder="结果..."
+            className="custom-scrollbar h-full flex-1 resize-none bg-transparent p-4 font-mono text-sm leading-relaxed text-slate-700 selection:bg-indigo-100 selection:text-indigo-900 focus:outline-none"
+          />
         </div>
       </ToolMain>
     </ToolPageShell>
+  );
+}
+
+type OperationGroupProps = {
+  title: string;
+  group: EncodingOperationGroup;
+  operations: readonly EncodingOperationDefinition[];
+  activeOperationId: string | null;
+  onRun: (operation: EncodingOperationDefinition) => void;
+};
+
+function OperationGroup({ title, group, operations, activeOperationId, onRun }: OperationGroupProps) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-1 text-xs font-semibold uppercase tracking-wider text-slate-500">
+        {group === 'encrypt' ? <Lock className="h-3.5 w-3.5" /> : <Unlock className="h-3.5 w-3.5" />}
+        <span>{title}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {operations.map((operation) => {
+          const isActive = activeOperationId === operation.id;
+          return (
+            <button
+              key={operation.id}
+              onClick={() => onRun(operation)}
+              className={cn(
+                'rounded-md border px-2.5 py-1.5 text-xs font-medium transition-all',
+                isActive
+                  ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
+                  : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300 hover:text-slate-800',
+              )}
+              title={operation.hint}
+            >
+              {operation.label}
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }
 
