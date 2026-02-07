@@ -21,3 +21,8 @@ test('resolveToolModulesByIds: ignores unknown ids', () => {
 test('TOOL_MODULES: includes websocket tool', () => {
   assert.ok(TOOL_MODULES.some((t) => t.id === 'websocket'));
 });
+
+
+test('TOOL_MODULES: includes excel-converter tool', () => {
+  assert.ok(TOOL_MODULES.some((t) => t.id === 'excel-converter'));
+});

@@ -4,6 +4,16 @@
 
 提供“工具模块注册表”的单一事实来源，并提供基于白名单的过滤函数，供面板菜单与 Popup 菜单复用。
 
+当前注册工具包含：
+- json
+- excel-converter
+- encoding
+- cron
+- jwt
+- api-tester
+- websocket
+- curl-to-md
+
 ## 接口定义
 
 ### 公共API
@@ -18,6 +28,11 @@
 **行为**: 按白名单顺序输出工具模块；未知 id 忽略
 **结果**: Popup 菜单可控且不影响面板菜单
 
+### 工具菜单统一注册
+**条件**: 新增工具页（如 excel-converter）
+**行为**: 在 `TOOL_MODULES` 注册后，侧栏与 Popup 菜单自动复用
+**结果**: 避免多处手工维护造成菜单不一致
+
 ## 依赖关系
 
 ```yaml
@@ -26,4 +41,3 @@
   - popup
   - tools-panel
 ```
-

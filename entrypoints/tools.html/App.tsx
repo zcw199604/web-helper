@@ -5,6 +5,7 @@ import { TOOL_MODULES } from '@/utils/tool-modules';
 
 // 导入工具组件
 import JsonFormatter from '@/components/JsonFormatter';
+import ExcelConverter from '@/components/ExcelConverter';
 import EncodingTools from '@/components/EncodingTools';
 import CronParser from '@/components/CronParser';
 import JwtDecoder from '@/components/JwtDecoder';
@@ -101,6 +102,7 @@ function App() {
               <Routes>
                 <Route path="/" element={<Navigate to="/json" replace />} />
                 <Route path="/json" element={<JsonFormatter />} />
+                <Route path="/excel-converter" element={<ExcelConverter />} />
                 <Route path="/encoding" element={<EncodingTools />} />
                 <Route path="/cron" element={<CronParser />} />
                 <Route path="/jwt" element={<JwtDecoder />} />

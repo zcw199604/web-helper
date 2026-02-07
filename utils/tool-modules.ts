@@ -1,8 +1,18 @@
 import type { LucideIcon } from 'lucide-react';
-import { FileJson, KeyRound, Clock, Settings2, Network, FileText, Cable } from 'lucide-react';
+import {
+  FileJson,
+  KeyRound,
+  Clock,
+  Settings2,
+  Network,
+  FileText,
+  Cable,
+  FileSpreadsheet,
+} from 'lucide-react';
 
 export type ToolId =
   | 'json'
+  | 'excel-converter'
   | 'encoding'
   | 'cron'
   | 'jwt'
@@ -30,6 +40,16 @@ export const TOOL_MODULES: ToolModule[] = [
     popupStyle: {
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
+    },
+  },
+  {
+    id: 'excel-converter',
+    name: 'Excel 转换',
+    description: '粘贴/导入 Excel 数据，导出 JSON / SQL / XML',
+    icon: FileSpreadsheet,
+    popupStyle: {
+      color: 'text-emerald-600',
+      bgColor: 'bg-emerald-50',
     },
   },
   {

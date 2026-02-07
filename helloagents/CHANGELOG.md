@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### 新增
+- **[excel-converter]**: 新增 Excel 转换工具，默认支持粘贴表格文本（TSV/CSV），可选导入 .xlsx/.xls，支持导出 JSON / INSERT SQL / XML
+  - 方案: [202602071028_excel-converter-json-sql-xml](archive/2026-02/202602071028_excel-converter-json-sql-xml/)
+  - 决策: excel-converter-json-sql-xml#D001(xlsx解析), excel-converter-json-sql-xml#D003(粘贴优先), excel-converter-json-sql-xml#D004(SQL方言适配)
 - **[encoding-tools]**: 编码转换工具扩展 21 项能力（Unicode/URL/UTF16(\x)/Base64/Hex/HTML/Gzip、MD5/SHA1、URL参数解析、JWT解码、Cookie格式化）
   - 方案: [202602070507_encoding-encrypt-decrypt-tools](archive/2026-02/202602070507_encoding-encrypt-decrypt-tools/)
   - 决策: encoding-encrypt-decrypt-tools#D001(操作注册表驱动), encoding-encrypt-decrypt-tools#D002(crypto-js + pako)
