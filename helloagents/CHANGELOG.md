@@ -29,6 +29,9 @@
 - cURL → Markdown：支持输入响应内容；未提供响应则不输出“响应示例”；移除“字段说明”段落
 - cURL → Markdown：生成的 Markdown 可编辑，复制/下载使用编辑后的内容
 - cURL → Markdown：支持解析 DevTools「Copy as fetch」文本（fetch → Markdown）
+- cURL / fetch → Markdown：新增 Header 自动清理（可开关）与手动勾选删除
+- cURL / fetch → Markdown：修复空输入/解析失败时手动删除状态重置引发的重复渲染
+- cURL / fetch → Markdown：优化解析链路（Header 勾选不再重复解析输入），并调整删除统计口径避免重复计数歧义
 
 ## [1.3.0] - 2026-01-19
 
