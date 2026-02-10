@@ -6,6 +6,7 @@
 
 当前注册工具包含：
 - json
+- json-cleaner
 - excel-converter
 - encoding
 - cron
@@ -29,7 +30,7 @@
 **结果**: Popup 菜单可控且不影响面板菜单
 
 ### 工具菜单统一注册
-**条件**: 新增工具页（如 excel-converter）
+**条件**: 新增工具页（如 excel-converter、json-cleaner）
 **行为**: 在 `TOOL_MODULES` 注册后，侧栏与 Popup 菜单自动复用
 **结果**: 避免多处手工维护造成菜单不一致
 

@@ -26,3 +26,8 @@ test('TOOL_MODULES: includes websocket tool', () => {
 test('TOOL_MODULES: includes excel-converter tool', () => {
   assert.ok(TOOL_MODULES.some((t) => t.id === 'excel-converter'));
 });
+
+
+test('TOOL_MODULES: includes json-cleaner tool', () => {
+  assert.ok(TOOL_MODULES.some((t) => t.id === 'json-cleaner'));
+});

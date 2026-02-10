@@ -7,6 +7,9 @@
 ## [Unreleased]
 
 ### 新增
+- **[json-cleaner]**: 新增 JSON 清理工具，支持按 JSONPath 规则剔除字段并生成可分享的新 JSON，支持策略保存/加载/重命名/删除
+  - 方案: [202602101011_json-cleaner-strategy](archive/2026-02/202602101011_json-cleaner-strategy/)
+  - 决策: json-cleaner-strategy#D001(独立工具页), json-cleaner-strategy#D002(JSONPath规则), json-cleaner-strategy#D003(localStorage持久化)
 - **[excel-converter]**: 新增 Excel 转换工具，默认支持粘贴表格文本（TSV/CSV），可选导入 .xlsx/.xls，支持导出 JSON / INSERT SQL / XML
   - 方案: [202602071028_excel-converter-json-sql-xml](archive/2026-02/202602071028_excel-converter-json-sql-xml/)
   - 决策: excel-converter-json-sql-xml#D001(xlsx解析), excel-converter-json-sql-xml#D003(粘贴优先), excel-converter-json-sql-xml#D004(SQL方言适配)

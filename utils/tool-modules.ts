@@ -8,10 +8,12 @@ import {
   FileText,
   Cable,
   FileSpreadsheet,
+  ShieldCheck,
 } from 'lucide-react';
 
 export type ToolId =
   | 'json'
+  | 'json-cleaner'
   | 'excel-converter'
   | 'encoding'
   | 'cron'
@@ -40,6 +42,16 @@ export const TOOL_MODULES: ToolModule[] = [
     popupStyle: {
       color: 'text-amber-600',
       bgColor: 'bg-amber-50',
+    },
+  },
+  {
+    id: 'json-cleaner',
+    name: 'JSON 清理',
+    description: '按策略剔除字段并生成新 JSON',
+    icon: ShieldCheck,
+    popupStyle: {
+      color: 'text-cyan-700',
+      bgColor: 'bg-cyan-50',
     },
   },
   {
