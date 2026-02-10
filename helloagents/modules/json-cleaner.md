@@ -22,6 +22,12 @@
 | `upsertJsonCleanStrategy` | `JsonCleanStrategyDraft` | `ok/error` + 策略对象 | 新增或更新策略（含重名校验） |
 | `deleteJsonCleanStrategy` | `id` | `ok/error` + 删除结果 | 删除指定策略 |
 
+### 公共 API（utils/json-cleaner-handoff.ts）
+| 函数/方法 | 参数 | 返回值 | 说明 |
+|----------|------|--------|------|
+| `setJsonCleanerPrefill` | `rawJsonText, options` | `ok/error` | 从 JSON 格式化页写入待清理内容 |
+| `consumeJsonCleanerPrefill` | 无 | `JsonCleanerHandoffPayload \| null` | 在 JSON 清理页读取并消费导入数据 |
+
 ## 行为规范
 
 ### 按策略执行清理
@@ -39,11 +45,18 @@
 **行为**: 写入 localStorage（含 version 字段），并执行策略名唯一性校验
 **结果**: 策略可在后续会话复用；存储空间不足时提示用户清理历史策略
 
+### 跨工具一键清理
+**条件**: 用户在 JSON 格式化页点击“一键清理”
+**行为**: 格式化结果通过 handoff 存储传递到 JSON 清理页，自动填充输入并尝试自动执行规则
+**结果**: 无需手动复制粘贴，即可基于格式化后的 JSON 直接清理
+
 ## 关键文件
 - `components/JsonCleaner.tsx`
 - `utils/json-cleaner.ts`
 - `utils/json-clean-strategy-store.ts`
+- `utils/json-cleaner-handoff.ts`
 - `tests/json-cleaner.test.js`
+- `tests/json-cleaner-handoff.test.js`
 - `utils/tool-modules.ts`
 - `entrypoints/tools.html/App.tsx`
 

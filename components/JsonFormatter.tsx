@@ -1,8 +1,10 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Copy, Check, Trash2, FileJson, AlignLeft, Minimize2, ShieldCheck, Code2, Network, Download, Search, TextSearch, X } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import { JsonTree } from '@/components/ui/JsonTree';
 import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
+import { setJsonCleanerPrefill } from '@/utils/json-cleaner-handoff';
 import JsonWorker from '../utils/json.worker?worker';
 
 type OutputMode = 'format' | 'minify';
@@ -67,6 +69,7 @@ type WorkerResponse =
     };
 
 function JsonFormatter() {
+  const navigate = useNavigate();
   const [input, setInput] = useState('');
   const [output, setOutput] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -475,6 +478,28 @@ function JsonFormatter() {
     URL.revokeObjectURL(url);
   }, [output, showQuery]);
 
+  // 一键发送到 JSON 清理工具（无需手动复制粘贴）
+  const handleSendToCleaner = useCallback(() => {
+    const sourceText = output.trim() || inputRef.current.trim();
+
+    if (!sourceText) {
+      setError('请先输入并格式化 JSON，再执行一键清理');
+      return;
+    }
+
+    const handoffResult = setJsonCleanerPrefill(sourceText, {
+      autoRun: true,
+      source: 'json-formatter',
+    });
+
+    if (!handoffResult.ok) {
+      setError(handoffResult.error);
+      return;
+    }
+
+    navigate('/json-cleaner');
+  }, [navigate, output]);
+
   // 清空
   const handleClear = useCallback(() => {
     sourceIdRef.current += 1;
@@ -601,6 +626,11 @@ function JsonFormatter() {
             >
               <TextSearch className="w-4 h-4" />
               <span>搜索</span>
+            </button>
+
+            <button onClick={handleSendToCleaner} className="btn btn-secondary gap-2" disabled={!output && !input.trim()}>
+              <ShieldCheck className="w-4 h-4" />
+              <span>一键清理</span>
             </button>
 
             <button onClick={handleClear} className="btn btn-ghost p-2 text-gray-400 hover:text-red-500">

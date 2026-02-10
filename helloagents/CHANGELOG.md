@@ -20,6 +20,7 @@
 - WebSocket 调试：新增工具页（扩展面板/页面上下文连接、Text/JSON/Binary、日志搜索/过滤、自动重连、心跳）
 
 ### 变更
+- **[json-cleaner/json]**: JSON 格式化页新增“一键清理”，可将格式化结果直接导入 JSON 清理页并自动执行（无需手动粘贴）
 - Popup 菜单：支持通过 `popupVisibleToolIds` 配置展示模块，并与面板共用工具注册表避免不一致
 - UI：Popup 与 tools 面板调整为「One API Hub」同款清爽风（白底 + 浅灰背景 + 蓝色强调 + 轻边框阴影）
 - UI：tools.html 改为全宽 + 窄屏紧凑布局：左侧导航默认折叠为图标栏，收紧外边距/间距与 ToolHeader 内边距，扩大主内容可用空间

@@ -25,6 +25,7 @@ import {
   listJsonCleanStrategies,
   upsertJsonCleanStrategy,
 } from '@/utils/json-clean-strategy-store';
+import { consumeJsonCleanerPrefill } from '@/utils/json-cleaner-handoff';
 
 function normalizeExpressionsText(text: string): string[] {
   return text
@@ -59,6 +60,9 @@ export default function JsonCleaner() {
   const [strategyDescription, setStrategyDescription] = useState('');
   const [expressionsText, setExpressionsText] = useState('');
 
+  const [handoffMessage, setHandoffMessage] = useState<string | null>(null);
+  const [pendingAutoRunText, setPendingAutoRunText] = useState<string | null>(null);
+
   const expressionList = useMemo(() => normalizeExpressionsText(expressionsText), [expressionsText]);
   const validation = useMemo(() => validateStrategy({ expressions: expressionList }), [expressionList]);
 
@@ -87,28 +91,59 @@ export default function JsonCleaner() {
     if (list.length > 0) {
       loadStrategyToEditor(list[0]);
     }
+
+    const handoffPayload = consumeJsonCleanerPrefill();
+    if (handoffPayload) {
+      setInputText(handoffPayload.jsonText);
+      setHandoffMessage('已从 JSON 格式化工具导入内容');
+
+      if (handoffPayload.autoRun) {
+        setPendingAutoRunText(handoffPayload.jsonText);
+      }
+    }
   }, [loadStrategyToEditor]);
 
-  const handleRunClean = useCallback(() => {
-    try {
-      const draft: JsonCleanStrategyDraft = {
-        name: strategyName.trim() || '临时策略',
-        description: strategyDescription,
-        expressions: expressionList,
-      };
+  const runCleanWithText = useCallback(
+    (sourceText: string) => {
+      try {
+        const draft: JsonCleanStrategyDraft = {
+          name: strategyName.trim() || '临时策略',
+          description: strategyDescription,
+          expressions: expressionList,
+        };
 
-      const result = applyJsonCleanStrategy(inputText, draft);
-      setOutputText(formatOutput(result.cleaned));
-      setSummary(result.summary);
-      setDetails(result.details);
-      setError(null);
-    } catch (e) {
-      setOutputText('');
-      setSummary(null);
-      setDetails([]);
-      setError((e as Error).message);
+        const result = applyJsonCleanStrategy(sourceText, draft);
+        setOutputText(formatOutput(result.cleaned));
+        setSummary(result.summary);
+        setDetails(result.details);
+        setError(null);
+      } catch (e) {
+        setOutputText('');
+        setSummary(null);
+        setDetails([]);
+        setError((e as Error).message);
+      }
+    },
+    [expressionList, strategyDescription, strategyName],
+  );
+
+  const handleRunClean = useCallback(() => {
+    runCleanWithText(inputText);
+  }, [inputText, runCleanWithText]);
+
+  useEffect(() => {
+    if (!pendingAutoRunText) return;
+
+    if (expressionList.length === 0) {
+      setHandoffMessage('已导入格式化 JSON，请先配置清理规则后再执行');
+      setPendingAutoRunText(null);
+      return;
     }
-  }, [expressionList, inputText, strategyDescription, strategyName]);
+
+    runCleanWithText(pendingAutoRunText);
+    setPendingAutoRunText(null);
+    setHandoffMessage('已自动执行清理，可直接查看输出结果');
+  }, [expressionList.length, pendingAutoRunText, runCleanWithText]);
 
   const handleSaveStrategy = useCallback(() => {
     const saveResult = upsertJsonCleanStrategy({
@@ -187,6 +222,8 @@ export default function JsonCleaner() {
     setError(null);
     setCopied(false);
     setShowDetails(false);
+    setHandoffMessage(null);
+    setPendingAutoRunText(null);
 
     // 清空当前策略选择与编辑内容，但不删除已保存策略。
     resetEditor();
@@ -289,6 +326,10 @@ export default function JsonCleaner() {
 
       {error ? (
         <div className="border-b border-red-100 bg-red-50 px-4 py-2 text-sm text-red-600">{error}</div>
+      ) : null}
+
+      {handoffMessage ? (
+        <div className="border-b border-cyan-100 bg-cyan-50 px-4 py-2 text-sm text-cyan-700">{handoffMessage}</div>
       ) : null}
 
       <ToolMain className="grid min-h-0 grid-cols-1 divide-y divide-slate-100 overflow-hidden xl:grid-cols-2 xl:divide-x xl:divide-y-0">
