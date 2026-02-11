@@ -6,9 +6,12 @@ import { JsonTree } from '@/components/ui/JsonTree';
 import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
 import { setJsonCleanerPrefill } from '@/utils/json-cleaner-handoff';
 import {
+  buildJsonCleanPropertyExpression,
   upsertJsonCleanExtractedPath,
+  upsertJsonCleanExtractedProperty,
   type JsonCleanExtractMode,
 } from '@/utils/json-cleaner-rule-expressions';
+import { applyJsonCleanStrategy } from '@/utils/json-cleaner';
 import JsonWorker from '../utils/json.worker?worker';
 
 type OutputMode = 'format' | 'minify';
@@ -74,10 +77,15 @@ type WorkerResponse =
 
 const PRECISE_ARRAY_INDEX_RE = /\[\d+\]/;
 const GENERALIZED_ARRAY_INDEX_RE = /\[\*\]/;
+const PROPERTY_EXPRESSION_RE = /^\$\.\.(?:[a-zA-Z_$][a-zA-Z0-9_$]*|\[".*"\])$/;
 
-type ExtractedRuleTag = '精确' | '泛化' | '普通';
+type ExtractedRuleTag = '精确' | '泛化' | '普通' | '属性';
 
 function getExtractedRuleTag(path: string): ExtractedRuleTag {
+  if (PROPERTY_EXPRESSION_RE.test(path)) {
+    return '属性';
+  }
+
   if (GENERALIZED_ARRAY_INDEX_RE.test(path)) {
     return '泛化';
   }
@@ -555,6 +563,47 @@ function JsonFormatter() {
     setSelectedRulePaths((previous) => upsertJsonCleanExtractedPath(previous, path, mode));
   }, []);
 
+  const handleExtractPropertyRule = useCallback((propertyName: string) => {
+    const expression = buildJsonCleanPropertyExpression(propertyName);
+    if (!expression) {
+      return;
+    }
+
+    setSelectedRulePaths((previous) => upsertJsonCleanExtractedProperty(previous, propertyName));
+  }, []);
+
+  const handleCleanProperty = useCallback((path: string, propertyName: string) => {
+    const sourceText = output.trim() || inputRef.current.trim();
+    if (!sourceText) {
+      return;
+    }
+
+    const expression = path.trim() || buildJsonCleanPropertyExpression(propertyName);
+    if (!expression) {
+      return;
+    }
+
+    try {
+      const result = applyJsonCleanStrategy(sourceText, {
+        expressions: [expression],
+      });
+
+      const nextText = JSON.stringify(result.cleaned, null, indent);
+      sourceIdRef.current += 1;
+      setInput(nextText);
+      setOutput(nextText);
+      inputRef.current = nextText;
+      setError(null);
+      setQueryError(null);
+
+      if (viewModeRef.current === 'tree') {
+        setDisplayData(result.cleaned);
+      }
+    } catch (cleanupError) {
+      setError(`即时清理失败：${(cleanupError as Error).message}`);
+    }
+  }, [indent, output]);
+
   const handleClearExtractedRules = useCallback(() => {
     setSelectedRulePaths([]);
   }, []);
@@ -865,6 +914,8 @@ function JsonFormatter() {
                           ? 'bg-blue-100 text-blue-700'
                           : ruleTag === '泛化'
                             ? 'bg-cyan-100 text-cyan-700'
+                            : ruleTag === '属性'
+                              ? 'bg-violet-100 text-violet-700'
                             : 'bg-slate-100 text-slate-600',
                       )}
                     >
@@ -890,7 +941,7 @@ function JsonFormatter() {
             </div>
 
             <div className="mt-1 text-[11px] text-cyan-600">
-              标记说明：精确 = 具体索引，泛化 = [*]，普通 = 无数组索引
+              标记说明：属性 = 按属性名删除，精确 = 具体索引，泛化 = [*]，普通 = 无数组索引
             </div>
             <div className="mt-1 text-[11px] text-cyan-600">点击规则右侧 × 可单条移除</div>
           </div>
@@ -1018,6 +1069,8 @@ function JsonFormatter() {
                             expandAll={expandAll}
                             onFillPath={handleFillPath}
                             onExtractRulePath={handleExtractRulePath}
+                            onExtractPropertyRule={handleExtractPropertyRule}
+                            onCleanProperty={handleCleanProperty}
                             className="h-full w-full overflow-auto p-4 custom-scrollbar"
                         />
                     ) : (

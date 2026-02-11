@@ -31,6 +31,7 @@
 ### 公共 API（utils/json-cleaner-rule-expressions.ts）
 | 函数/方法 | 参数 | 返回值 | 说明 |
 |----------|------|--------|------|
+| `buildJsonCleanPropertyExpression` | `propertyName` | `string` | 根据属性名生成属性删除规则（`$..key` / `$..["key"]`） |
 | `parseJsonCleanExpressionsText` | `text` | `string[]` | 将规则文本解析为去重后的规则列表 |
 | `mergeJsonCleanExpressions` | `current, incoming` | `string[]` | 合并规则并去重保序 |
 | `mergeJsonCleanExpressionsText` | `text, incoming` | `string` | 基于规则文本执行合并并输出新文本 |
@@ -61,6 +62,16 @@
 **条件**: 用户在 JSON 格式化 Tree 视图中点击“提取清理规则”
 **行为**: 将目标节点 JSONPath 累积到规则集合，并在“一键清理”时随 handoff 一并传递
 **结果**: JSON 清理页自动合并导入规则到“规则列表”，并在 `autoRun` 条件下直接执行
+
+### 格式化视图属性提取规则
+**条件**: 用户在 JSON 格式化 Tree 视图中点击“提取属性规则（@）”
+**行为**: 按属性名生成属性删除规则（简单 key → `$..key`，特殊 key → `$..["key"]`）并累积到规则集合
+**结果**: 可一键删除 JSON 中同名属性，覆盖对象/数组嵌套场景
+
+### 格式化视图即时清理属性
+**条件**: 用户在 JSON 格式化 Tree 视图中点击“橡皮擦”图标
+**行为**: 直接按当前属性路径执行单条清理，并立即刷新格式化输入/输出与 Tree 展示
+**结果**: 无需跳转清理页，可在格式化视图内直接删掉目标属性
 
 ## 关键文件
 - `components/JsonCleaner.tsx`

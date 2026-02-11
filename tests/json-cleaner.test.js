@@ -104,3 +104,82 @@ test('applyJsonCleanStrategy: 重复规则会被去重，仅执行一次删除',
     user: {},
   });
 });
+
+test('applyJsonCleanStrategy: 属性规则 $..key 可删除所有同名字段', () => {
+  const result = applyJsonCleanStrategy(
+    {
+      user: {
+        password: 'secret-1',
+        profile: {
+          password: 'secret-2',
+        },
+      },
+      items: [
+        { id: 1, password: 'secret-3' },
+        { id: 2, nested: { password: 'secret-4' } },
+      ],
+    },
+    {
+      expressions: ['$..password'],
+    },
+  );
+
+  assert.equal(result.summary.removedNodes, 4);
+  assert.deepEqual(result.cleaned, {
+    user: {
+      profile: {},
+    },
+    items: [{ id: 1 }, { id: 2, nested: {} }],
+  });
+});
+
+test('applyJsonCleanStrategy: 属性规则 bracket 形式可删除特殊 key', () => {
+  const result = applyJsonCleanStrategy(
+    {
+      profile: {
+        'user-name': 'alice',
+      },
+      items: [
+        {
+          'user-name': 'bob',
+        },
+      ],
+    },
+    {
+      expressions: ['$..["user-name"]'],
+    },
+  );
+
+  assert.equal(result.summary.removedNodes, 2);
+  assert.deepEqual(result.cleaned, {
+    profile: {},
+    items: [{}],
+  });
+});
+
+test('applyJsonCleanStrategy: 单条属性路径规则可删除当前字段', () => {
+  const result = applyJsonCleanStrategy(
+    {
+      user: {
+        id: 1,
+        token: 'secret',
+      },
+      meta: {
+        token: 'keep-this',
+      },
+    },
+    {
+      expressions: ['$.user.token'],
+    },
+  );
+
+  assert.equal(result.summary.removedNodes, 1);
+  assert.deepEqual(result.cleaned, {
+    user: {
+      id: 1,
+    },
+    meta: {
+      token: 'keep-this',
+    },
+  });
+});

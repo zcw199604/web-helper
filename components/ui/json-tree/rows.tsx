@@ -1,5 +1,5 @@
 import { useCallback, useState } from 'react';
-import { ChevronRight, ChevronDown, Copy, Download, Check, CornerLeftUp } from 'lucide-react';
+import { ChevronRight, ChevronDown, Copy, Download, Check, CornerLeftUp, Eraser } from 'lucide-react';
 import { cn } from '@/utils/cn';
 import type { JsonCleanExtractMode } from '@/utils/json-cleaner-rule-expressions';
 
@@ -81,10 +81,14 @@ export function LeafRowView({
   row,
   onFillPath,
   onExtractRulePath,
+  onExtractPropertyRule,
+  onCleanProperty,
 }: {
   row: Extract<TreeRow, { kind: 'leaf' }>;
   onFillPath?: (path: string) => void;
   onExtractRulePath?: (path: string, mode?: JsonCleanExtractMode) => void;
+  onExtractPropertyRule?: (propertyName: string) => void;
+  onCleanProperty?: (path: string, propertyName: string) => void;
 }) {
   const handleFillPath = useCallback(
     (e: React.MouseEvent) => {
@@ -102,6 +106,24 @@ export function LeafRowView({
     [onExtractRulePath, row.path]
   );
 
+  const handleExtractPropertyRule = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!row.name) return;
+      onExtractPropertyRule?.(row.name);
+    },
+    [onExtractPropertyRule, row.name]
+  );
+
+  const handleCleanProperty = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!row.name) return;
+      onCleanProperty?.(row.path, row.name);
+    },
+    [onCleanProperty, row.name, row.path]
+  );
+
   return (
     <div className="flex items-start hover:bg-slate-50/50 rounded px-1 -ml-1 py-0.5 font-mono text-sm leading-6 group">
       <div style={{ paddingLeft: `${row.level * 20}px` }} className="flex-1 break-all flex items-center">
@@ -112,8 +134,24 @@ export function LeafRowView({
           {!row.isLast ? <span className="text-slate-500">,</span> : null}
         </div>
 
-        {onFillPath || onExtractRulePath ? (
+        {onFillPath || onExtractRulePath || onExtractPropertyRule || onCleanProperty ? (
           <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity px-2">
+            {onCleanProperty ? (
+              <button
+                onClick={handleCleanProperty}
+                disabled={!row.name}
+                className={cn(
+                  'p-1 rounded transition-all',
+                  row.name
+                    ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                    : 'text-slate-300 cursor-not-allowed',
+                )}
+                title={row.name ? '直接清理此属性' : '当前节点无属性名，无法直接清理'}
+              >
+                <Eraser className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
+
             {onFillPath ? (
               <button
                 onClick={handleFillPath}
@@ -134,6 +172,22 @@ export function LeafRowView({
                 <Check className="w-3.5 h-3.5" />
               </button>
             ) : null}
+
+            {onExtractPropertyRule ? (
+              <button
+                onClick={handleExtractPropertyRule}
+                disabled={!row.name}
+                className={cn(
+                  'p-1 rounded transition-all',
+                  row.name
+                    ? 'text-slate-400 hover:text-violet-600 hover:bg-violet-50'
+                    : 'text-slate-300 cursor-not-allowed',
+                )}
+                title={row.name ? '提取属性规则（按属性名）' : '当前节点无属性名，无法提取属性规则'}
+              >
+                <span className="text-[10px] font-bold leading-none">@</span>
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -146,11 +200,15 @@ export function ContainerRowView({
   onToggle,
   onFillPath,
   onExtractRulePath,
+  onExtractPropertyRule,
+  onCleanProperty,
 }: {
   row: Extract<TreeRow, { kind: 'container' }>;
   onToggle: (path: string) => void;
   onFillPath?: (path: string) => void;
   onExtractRulePath?: (path: string, mode?: JsonCleanExtractMode) => void;
+  onExtractPropertyRule?: (propertyName: string) => void;
+  onCleanProperty?: (path: string, propertyName: string) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const BracketOpen = row.containerType === 'array' ? '[' : '{';
@@ -186,6 +244,24 @@ export function ContainerRowView({
       onExtractRulePath?.(row.path, mode);
     },
     [onExtractRulePath, row.path]
+  );
+
+  const handleExtractPropertyRule = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!row.name) return;
+      onExtractPropertyRule?.(row.name);
+    },
+    [onExtractPropertyRule, row.name]
+  );
+
+  const handleCleanProperty = useCallback(
+    (e: React.MouseEvent) => {
+      e.stopPropagation();
+      if (!row.name) return;
+      onCleanProperty?.(row.path, row.name);
+    },
+    [onCleanProperty, row.name, row.path]
   );
 
   const isCollapsed = !row.isExpanded;
@@ -236,6 +312,38 @@ export function ContainerRowView({
       </div>
 
       <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity px-2">
+        {onCleanProperty ? (
+          <button
+            onClick={handleCleanProperty}
+            disabled={!row.name}
+            className={cn(
+              'p-1 rounded transition-all',
+              row.name
+                ? 'text-slate-400 hover:text-rose-600 hover:bg-rose-50'
+                : 'text-slate-300 cursor-not-allowed',
+            )}
+            title={row.name ? '直接清理此属性' : '当前节点无属性名，无法直接清理'}
+          >
+            <Eraser className="w-3.5 h-3.5" />
+          </button>
+        ) : null}
+
+        {onExtractPropertyRule ? (
+          <button
+            onClick={handleExtractPropertyRule}
+            disabled={!row.name}
+            className={cn(
+              'p-1 rounded transition-all',
+              row.name
+                ? 'text-slate-400 hover:text-violet-600 hover:bg-violet-50'
+                : 'text-slate-300 cursor-not-allowed',
+            )}
+            title={row.name ? '提取属性规则（按属性名）' : '当前节点无属性名，无法提取属性规则'}
+          >
+            <span className="text-[10px] font-bold leading-none">@</span>
+          </button>
+        ) : null}
+
         {onExtractRulePath ? (
           <button
             onClick={(e) => handleExtractRulePath(e, 'generalized')}

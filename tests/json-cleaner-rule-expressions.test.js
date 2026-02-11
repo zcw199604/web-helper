@@ -2,10 +2,12 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  buildJsonCleanPropertyExpression,
   mergeJsonCleanExpressions,
   mergeJsonCleanExpressionsText,
   normalizeJsonCleanPathForExtraction,
   parseJsonCleanExpressionsText,
+  upsertJsonCleanExtractedProperty,
   upsertJsonCleanExtractedPath,
 } from '../utils/json-cleaner-rule-expressions.ts';
 
@@ -55,4 +57,24 @@ test('upsertJsonCleanExtractedPath: precise 模式直接写入精确索引', () 
 test('upsertJsonCleanExtractedPath: 无数组索引路径保持不变', () => {
   const result = upsertJsonCleanExtractedPath([], '$.user.profile.name');
   assert.deepEqual(result, ['$.user.profile.name']);
+});
+
+test('buildJsonCleanPropertyExpression: simple key 使用 $..key', () => {
+  assert.equal(buildJsonCleanPropertyExpression('password'), '$..password');
+});
+
+test('buildJsonCleanPropertyExpression: 特殊 key 使用 bracket 形式', () => {
+  assert.equal(buildJsonCleanPropertyExpression('user-name'), '$..["user-name"]');
+  assert.equal(buildJsonCleanPropertyExpression('中文字段'), '$..["中文字段"]');
+});
+
+test('upsertJsonCleanExtractedProperty: 可追加属性规则并去重', () => {
+  const first = upsertJsonCleanExtractedProperty([], 'password');
+  assert.deepEqual(first, ['$..password']);
+
+  const second = upsertJsonCleanExtractedProperty(first, 'password');
+  assert.deepEqual(second, ['$..password']);
+
+  const third = upsertJsonCleanExtractedProperty(second, 'user-name');
+  assert.deepEqual(third, ['$..password', '$..["user-name"]']);
 });

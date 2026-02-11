@@ -20,6 +20,12 @@
 - WebSocket 调试：新增工具页（扩展面板/页面上下文连接、Text/JSON/Binary、日志搜索/过滤、自动重连、心跳）
 
 ### 变更
+- **[json-cleaner/json]**: JSON 格式化 Tree 视图支持“点击即清理属性”（橡皮擦按钮），可在格式化结果中直接删除当前字段并即时刷新视图
+  - 方案: [202602111756_json-cleaner-property-extract](plan/202602111756_json-cleaner-property-extract/)
+  - 决策: json-cleaner-property-extract#D004(Formatter内即时清理属性)
+- **[json-cleaner/json]**: JSON 格式化 Tree 视图新增“属性规则提取（@）”，支持直接按属性名生成删除规则（`$..key` / `$..["key"]`），并与节点规则提取联动导入清理工具
+  - 方案: [202602111756_json-cleaner-property-extract](plan/202602111756_json-cleaner-property-extract/)
+  - 决策: json-cleaner-property-extract#D001(节点/属性双提取), json-cleaner-property-extract#D002(属性规则生成策略), json-cleaner-property-extract#D003(协议保持不变)
 - **[json-cleaner/json]**: JSON 格式化页支持在 Tree 视图直接选择字段/节点提取清理规则，并随“一键清理”自动导入到 JSON 清理规则列表（含规则合并去重）
   - 方案: [202602110933_json-cleaner-path-extract](plan/202602110933_json-cleaner-path-extract/)
   - 决策: json-cleaner-path-extract#D001(Formatter侧提取), json-cleaner-path-extract#D002(handoff扩展规则传输), json-cleaner-path-extract#D003(Cleaner侧合并去重保序)

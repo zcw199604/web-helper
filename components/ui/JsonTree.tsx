@@ -20,6 +20,8 @@ interface JsonTreeProps {
   path?: string;
   onFillPath?: (path: string) => void;
   onExtractRulePath?: (path: string, mode?: JsonCleanExtractMode) => void;
+  onExtractPropertyRule?: (propertyName: string) => void;
+  onCleanProperty?: (path: string, propertyName: string) => void;
   className?: string;
 }
 
@@ -69,6 +71,8 @@ function JsonTreeImpl({
   path = '$',
   onFillPath,
   onExtractRulePath,
+  onExtractPropertyRule,
+  onCleanProperty,
   className,
 }: JsonTreeProps) {
   const [isPending, startTransition] = useTransition();
@@ -256,13 +260,21 @@ function JsonTreeImpl({
               }}
             >
               {row.kind === 'leaf' ? (
-                <LeafRowView row={row} onFillPath={onFillPath} onExtractRulePath={onExtractRulePath} />
+                <LeafRowView
+                  row={row}
+                  onFillPath={onFillPath}
+                  onExtractRulePath={onExtractRulePath}
+                  onExtractPropertyRule={onExtractPropertyRule}
+                  onCleanProperty={onCleanProperty}
+                />
               ) : row.kind === 'container' ? (
                 <ContainerRowView
                   row={row}
                   onToggle={onToggle}
                   onFillPath={onFillPath}
                   onExtractRulePath={onExtractRulePath}
+                  onExtractPropertyRule={onExtractPropertyRule}
+                  onCleanProperty={onCleanProperty}
                 />
               ) : row.kind === 'more' ? (
                 <MoreRowView row={row} onShowMore={onShowMore} />

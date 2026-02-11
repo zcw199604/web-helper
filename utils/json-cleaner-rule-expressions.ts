@@ -1,6 +1,32 @@
 const ARRAY_INDEX_SEGMENT_RE = /\[(\d+)\]/g;
+const SIMPLE_KEY_RE = /^[a-zA-Z_$][a-zA-Z0-9_$]*$/;
 
 export type JsonCleanExtractMode = 'generalized' | 'precise';
+
+export function buildJsonCleanPropertyExpression(rawPropertyName: string): string {
+  const propertyName = rawPropertyName.trim();
+  if (!propertyName) {
+    return '';
+  }
+
+  if (SIMPLE_KEY_RE.test(propertyName)) {
+    return `$..${propertyName}`;
+  }
+
+  return `$..[${JSON.stringify(propertyName)}]`;
+}
+
+export function upsertJsonCleanExtractedProperty(
+  currentExpressions: ReadonlyArray<string>,
+  rawPropertyName: string,
+): string[] {
+  const propertyExpression = buildJsonCleanPropertyExpression(rawPropertyName);
+  if (!propertyExpression) {
+    return normalizeJsonCleanExpressions(currentExpressions);
+  }
+
+  return mergeJsonCleanExpressions(currentExpressions, [propertyExpression]);
+}
 
 export function normalizeJsonCleanPathForExtraction(path: string): string {
   const trimmedPath = path.trim();
