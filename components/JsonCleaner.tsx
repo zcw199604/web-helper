@@ -26,13 +26,10 @@ import {
   upsertJsonCleanStrategy,
 } from '@/utils/json-clean-strategy-store';
 import { consumeJsonCleanerPrefill } from '@/utils/json-cleaner-handoff';
-
-function normalizeExpressionsText(text: string): string[] {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.trim())
-    .filter(Boolean);
-}
+import {
+  mergeJsonCleanExpressionsText,
+  parseJsonCleanExpressionsText,
+} from '@/utils/json-cleaner-rule-expressions';
 
 function formatStrategyToText(strategy: JsonCleanStrategy): string {
   return strategy.expressions.join('\n');
@@ -62,8 +59,9 @@ export default function JsonCleaner() {
 
   const [handoffMessage, setHandoffMessage] = useState<string | null>(null);
   const [pendingAutoRunText, setPendingAutoRunText] = useState<string | null>(null);
+  const [pendingImportedExpressions, setPendingImportedExpressions] = useState<string[]>([]);
 
-  const expressionList = useMemo(() => normalizeExpressionsText(expressionsText), [expressionsText]);
+  const expressionList = useMemo(() => parseJsonCleanExpressionsText(expressionsText), [expressionsText]);
   const validation = useMemo(() => validateStrategy({ expressions: expressionList }), [expressionList]);
 
   const reloadStrategies = useCallback(() => {
@@ -94,14 +92,25 @@ export default function JsonCleaner() {
 
     const handoffPayload = consumeJsonCleanerPrefill();
     if (handoffPayload) {
+      const importedExpressions = handoffPayload.ruleExpressions;
+      const mergedExpressionsText = mergeJsonCleanExpressionsText(expressionsText, importedExpressions);
+
       setInputText(handoffPayload.jsonText);
-      setHandoffMessage('已从 JSON 格式化工具导入内容');
+      setExpressionsText(mergedExpressionsText);
+      setPendingImportedExpressions(importedExpressions);
+
+      const importedCount = importedExpressions.length;
+      setHandoffMessage(
+        importedCount > 0
+          ? `已从 JSON 格式化工具导入内容与 ${importedCount} 条规则`
+          : '已从 JSON 格式化工具导入内容',
+      );
 
       if (handoffPayload.autoRun) {
         setPendingAutoRunText(handoffPayload.jsonText);
       }
     }
-  }, [loadStrategyToEditor]);
+  }, [expressionsText, loadStrategyToEditor]);
 
   const runCleanWithText = useCallback(
     (sourceText: string) => {
@@ -137,13 +146,21 @@ export default function JsonCleaner() {
     if (expressionList.length === 0) {
       setHandoffMessage('已导入格式化 JSON，请先配置清理规则后再执行');
       setPendingAutoRunText(null);
+      setPendingImportedExpressions([]);
       return;
     }
 
     runCleanWithText(pendingAutoRunText);
     setPendingAutoRunText(null);
+
+    if (pendingImportedExpressions.length > 0) {
+      setHandoffMessage(`已自动执行清理，并导入 ${pendingImportedExpressions.length} 条规则`);
+      setPendingImportedExpressions([]);
+      return;
+    }
+
     setHandoffMessage('已自动执行清理，可直接查看输出结果');
-  }, [expressionList.length, pendingAutoRunText, runCleanWithText]);
+  }, [expressionList.length, pendingAutoRunText, pendingImportedExpressions, runCleanWithText]);
 
   const handleSaveStrategy = useCallback(() => {
     const saveResult = upsertJsonCleanStrategy({
@@ -224,6 +241,7 @@ export default function JsonCleaner() {
     setShowDetails(false);
     setHandoffMessage(null);
     setPendingAutoRunText(null);
+    setPendingImportedExpressions([]);
 
     // 清空当前策略选择与编辑内容，但不删除已保存策略。
     resetEditor();

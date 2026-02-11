@@ -25,8 +25,15 @@
 ### 公共 API（utils/json-cleaner-handoff.ts）
 | 函数/方法 | 参数 | 返回值 | 说明 |
 |----------|------|--------|------|
-| `setJsonCleanerPrefill` | `rawJsonText, options` | `ok/error` | 从 JSON 格式化页写入待清理内容 |
+| `setJsonCleanerPrefill` | `rawJsonText, options` | `ok/error` | 从 JSON 格式化页写入待清理内容（支持附带规则列表） |
 | `consumeJsonCleanerPrefill` | 无 | `JsonCleanerHandoffPayload \| null` | 在 JSON 清理页读取并消费导入数据 |
+
+### 公共 API（utils/json-cleaner-rule-expressions.ts）
+| 函数/方法 | 参数 | 返回值 | 说明 |
+|----------|------|--------|------|
+| `parseJsonCleanExpressionsText` | `text` | `string[]` | 将规则文本解析为去重后的规则列表 |
+| `mergeJsonCleanExpressions` | `current, incoming` | `string[]` | 合并规则并去重保序 |
+| `mergeJsonCleanExpressionsText` | `text, incoming` | `string` | 基于规则文本执行合并并输出新文本 |
 
 ## 行为规范
 
@@ -50,13 +57,20 @@
 **行为**: 格式化结果通过 handoff 存储传递到 JSON 清理页，自动填充输入并尝试自动执行规则
 **结果**: 无需手动复制粘贴，即可基于格式化后的 JSON 直接清理
 
+### 格式化视图节点提取规则
+**条件**: 用户在 JSON 格式化 Tree 视图中点击“提取清理规则”
+**行为**: 将目标节点 JSONPath 累积到规则集合，并在“一键清理”时随 handoff 一并传递
+**结果**: JSON 清理页自动合并导入规则到“规则列表”，并在 `autoRun` 条件下直接执行
+
 ## 关键文件
 - `components/JsonCleaner.tsx`
 - `utils/json-cleaner.ts`
 - `utils/json-clean-strategy-store.ts`
 - `utils/json-cleaner-handoff.ts`
+- `utils/json-cleaner-rule-expressions.ts`
 - `tests/json-cleaner.test.js`
 - `tests/json-cleaner-handoff.test.js`
+- `tests/json-cleaner-rule-expressions.test.js`
 - `utils/tool-modules.ts`
 - `entrypoints/tools.html/App.tsx`
 

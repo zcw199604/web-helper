@@ -5,6 +5,10 @@ import { cn } from '@/utils/cn';
 import { JsonTree } from '@/components/ui/JsonTree';
 import { ToolHeader, ToolMain, ToolPageShell } from '@/components/ui/ToolLayout';
 import { setJsonCleanerPrefill } from '@/utils/json-cleaner-handoff';
+import {
+  upsertJsonCleanExtractedPath,
+  type JsonCleanExtractMode,
+} from '@/utils/json-cleaner-rule-expressions';
 import JsonWorker from '../utils/json.worker?worker';
 
 type OutputMode = 'format' | 'minify';
@@ -68,6 +72,23 @@ type WorkerResponse =
       error: string | null;
     };
 
+const PRECISE_ARRAY_INDEX_RE = /\[\d+\]/;
+const GENERALIZED_ARRAY_INDEX_RE = /\[\*\]/;
+
+type ExtractedRuleTag = '精确' | '泛化' | '普通';
+
+function getExtractedRuleTag(path: string): ExtractedRuleTag {
+  if (GENERALIZED_ARRAY_INDEX_RE.test(path)) {
+    return '泛化';
+  }
+
+  if (PRECISE_ARRAY_INDEX_RE.test(path)) {
+    return '精确';
+  }
+
+  return '普通';
+}
+
 function JsonFormatter() {
   const navigate = useNavigate();
   const [input, setInput] = useState('');
@@ -96,6 +117,7 @@ function JsonFormatter() {
   const [searchError, setSearchError] = useState<string | null>(null);
   const [activeSearchIndex, setActiveSearchIndex] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const [selectedRulePaths, setSelectedRulePaths] = useState<string[]>([]);
   
   // 自动补全相关状态
   const [suggestions, setSuggestions] = useState<string[]>([]);
@@ -490,6 +512,7 @@ function JsonFormatter() {
     const handoffResult = setJsonCleanerPrefill(sourceText, {
       autoRun: true,
       source: 'json-formatter',
+      ruleExpressions: selectedRulePaths,
     });
 
     if (!handoffResult.ok) {
@@ -498,7 +521,7 @@ function JsonFormatter() {
     }
 
     navigate('/json-cleaner');
-  }, [navigate, output]);
+  }, [navigate, output, selectedRulePaths]);
 
   // 清空
   const handleClear = useCallback(() => {
@@ -519,6 +542,7 @@ function JsonFormatter() {
     setSuggestions([]);
     setShowSuggestions(false);
     setDisplayData(undefined);
+    setSelectedRulePaths([]);
   }, []);
 
   // 填充 Path 到查询框
@@ -526,6 +550,21 @@ function JsonFormatter() {
     setQueryInput(path);
     setShowQuery(true);
   }, []);
+
+  const handleExtractRulePath = useCallback((path: string, mode: JsonCleanExtractMode = 'generalized') => {
+    setSelectedRulePaths((previous) => upsertJsonCleanExtractedPath(previous, path, mode));
+  }, []);
+
+  const handleClearExtractedRules = useCallback(() => {
+    setSelectedRulePaths([]);
+  }, []);
+
+  const handleRemoveExtractedRulePath = useCallback((path: string) => {
+    setSelectedRulePaths((previous) => previous.filter((item) => item !== path));
+  }, []);
+
+  const previewRulePaths = selectedRulePaths.slice(0, 8);
+  const hiddenRuleCount = Math.max(0, selectedRulePaths.length - previewRulePaths.length);
 
   return (
     <ToolPageShell>
@@ -630,7 +669,7 @@ function JsonFormatter() {
 
             <button onClick={handleSendToCleaner} className="btn btn-secondary gap-2" disabled={!output && !input.trim()}>
               <ShieldCheck className="w-4 h-4" />
-              <span>一键清理</span>
+              <span>{selectedRulePaths.length > 0 ? `一键清理（${selectedRulePaths.length} 条规则）` : '一键清理'}</span>
             </button>
 
             <button onClick={handleClear} className="btn btn-ghost p-2 text-gray-400 hover:text-red-500">
@@ -800,6 +839,64 @@ function JsonFormatter() {
         }
       />
 
+      {selectedRulePaths.length > 0 ? (
+        <div className="px-6 pt-3">
+          <div className="rounded-lg border border-cyan-100 bg-cyan-50 px-3 py-2 text-xs text-cyan-700">
+            <div className="flex items-center justify-between gap-2">
+              <span>已提取 {selectedRulePaths.length} 条清理规则，将在一键清理时自动导入</span>
+              <button onClick={handleClearExtractedRules} className="font-medium text-cyan-700 hover:text-cyan-800 hover:underline">
+                清空规则
+              </button>
+            </div>
+
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {previewRulePaths.map((path) => {
+                const ruleTag = getExtractedRuleTag(path);
+
+                return (
+                  <div
+                    key={path}
+                    className="inline-flex max-w-full items-center gap-1 rounded border border-cyan-200 bg-white/90 px-2 py-1"
+                  >
+                    <span
+                      className={cn(
+                        'inline-flex rounded px-1 py-0.5 text-[10px] font-semibold',
+                        ruleTag === '精确'
+                          ? 'bg-blue-100 text-blue-700'
+                          : ruleTag === '泛化'
+                            ? 'bg-cyan-100 text-cyan-700'
+                            : 'bg-slate-100 text-slate-600',
+                      )}
+                    >
+                      {ruleTag}
+                    </span>
+                    <span className="max-w-[32rem] truncate font-mono text-[11px] text-cyan-800">{path}</span>
+                    <button
+                      onClick={() => handleRemoveExtractedRulePath(path)}
+                      className="inline-flex rounded p-0.5 text-cyan-500 hover:bg-cyan-100 hover:text-cyan-700"
+                      title="移除此规则"
+                    >
+                      <X className="h-3 w-3" />
+                    </button>
+                  </div>
+                );
+              })}
+
+              {hiddenRuleCount > 0 ? (
+                <span className="inline-flex items-center rounded border border-cyan-200 bg-white/90 px-2 py-1 text-[11px] text-cyan-700">
+                  +{hiddenRuleCount} 条
+                </span>
+              ) : null}
+            </div>
+
+            <div className="mt-1 text-[11px] text-cyan-600">
+              标记说明：精确 = 具体索引，泛化 = [*]，普通 = 无数组索引
+            </div>
+            <div className="mt-1 text-[11px] text-cyan-600">点击规则右侧 × 可单条移除</div>
+          </div>
+        </div>
+      ) : null}
+
       {/* 错误提示 (全局 JSON 错误) */}
       {error && (
         <div className="px-6 pt-4">
@@ -920,6 +1017,7 @@ function JsonFormatter() {
                             path="$"
                             expandAll={expandAll}
                             onFillPath={handleFillPath}
+                            onExtractRulePath={handleExtractRulePath}
                             className="h-full w-full overflow-auto p-4 custom-scrollbar"
                         />
                     ) : (

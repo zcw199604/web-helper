@@ -8,6 +8,7 @@ import {
   MoreRowView,
   type TreeRow,
 } from './json-tree/rows';
+import type { JsonCleanExtractMode } from '@/utils/json-cleaner-rule-expressions';
 
 interface JsonTreeProps {
   data: any;
@@ -18,6 +19,7 @@ interface JsonTreeProps {
   expandAll?: boolean;
   path?: string;
   onFillPath?: (path: string) => void;
+  onExtractRulePath?: (path: string, mode?: JsonCleanExtractMode) => void;
   className?: string;
 }
 
@@ -66,6 +68,7 @@ function JsonTreeImpl({
   expandAll,
   path = '$',
   onFillPath,
+  onExtractRulePath,
   className,
 }: JsonTreeProps) {
   const [isPending, startTransition] = useTransition();
@@ -253,9 +256,14 @@ function JsonTreeImpl({
               }}
             >
               {row.kind === 'leaf' ? (
-                <LeafRowView row={row} onFillPath={onFillPath} />
+                <LeafRowView row={row} onFillPath={onFillPath} onExtractRulePath={onExtractRulePath} />
               ) : row.kind === 'container' ? (
-                <ContainerRowView row={row} onToggle={onToggle} onFillPath={onFillPath} />
+                <ContainerRowView
+                  row={row}
+                  onToggle={onToggle}
+                  onFillPath={onFillPath}
+                  onExtractRulePath={onExtractRulePath}
+                />
               ) : row.kind === 'more' ? (
                 <MoreRowView row={row} onShowMore={onShowMore} />
               ) : (

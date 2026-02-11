@@ -6,12 +6,14 @@ export type JsonCleanerHandoffPayload = {
   source: 'json-formatter';
   jsonText: string;
   autoRun: boolean;
+  ruleExpressions: string[];
   createdAt: string;
 };
 
 type HandoffOptions = {
   autoRun?: boolean;
   source?: 'json-formatter';
+  ruleExpressions?: string[];
 };
 
 function readStorageItem(key: string): string | null {
@@ -75,6 +77,11 @@ export function setJsonCleanerPrefill(
       source: options.source ?? 'json-formatter',
       jsonText: normalizeJsonText(rawJsonText),
       autoRun: options.autoRun ?? true,
+      ruleExpressions: Array.isArray(options.ruleExpressions)
+        ? options.ruleExpressions
+            .map((expression) => (typeof expression === 'string' ? expression.trim() : ''))
+            .filter(Boolean)
+        : [],
       createdAt: new Date().toISOString(),
     };
 
@@ -103,6 +110,11 @@ export function peekJsonCleanerPrefill(): JsonCleanerHandoffPayload | null {
       source: parsed.source === 'json-formatter' ? 'json-formatter' : 'json-formatter',
       jsonText: parsed.jsonText,
       autoRun: Boolean(parsed.autoRun),
+      ruleExpressions: Array.isArray(parsed.ruleExpressions)
+        ? parsed.ruleExpressions
+            .map((expression) => (typeof expression === 'string' ? expression.trim() : ''))
+            .filter(Boolean)
+        : [],
       createdAt:
         typeof parsed.createdAt === 'string' && parsed.createdAt.trim()
           ? parsed.createdAt

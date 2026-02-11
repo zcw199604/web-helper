@@ -20,6 +20,9 @@
 - WebSocket 调试：新增工具页（扩展面板/页面上下文连接、Text/JSON/Binary、日志搜索/过滤、自动重连、心跳）
 
 ### 变更
+- **[json-cleaner/json]**: JSON 格式化页支持在 Tree 视图直接选择字段/节点提取清理规则，并随“一键清理”自动导入到 JSON 清理规则列表（含规则合并去重）
+  - 方案: [202602110933_json-cleaner-path-extract](plan/202602110933_json-cleaner-path-extract/)
+  - 决策: json-cleaner-path-extract#D001(Formatter侧提取), json-cleaner-path-extract#D002(handoff扩展规则传输), json-cleaner-path-extract#D003(Cleaner侧合并去重保序)
 - **[json-cleaner/json]**: JSON 格式化页新增“一键清理”，可将格式化结果直接导入 JSON 清理页并自动执行（无需手动粘贴）
 - Popup 菜单：支持通过 `popupVisibleToolIds` 配置展示模块，并与面板共用工具注册表避免不一致
 - UI：Popup 与 tools 面板调整为「One API Hub」同款清爽风（白底 + 浅灰背景 + 蓝色强调 + 轻边框阴影）

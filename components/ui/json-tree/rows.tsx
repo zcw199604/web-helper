@@ -1,6 +1,7 @@
 import { useCallback, useState } from 'react';
 import { ChevronRight, ChevronDown, Copy, Download, Check, CornerLeftUp } from 'lucide-react';
 import { cn } from '@/utils/cn';
+import type { JsonCleanExtractMode } from '@/utils/json-cleaner-rule-expressions';
 
 export type TreeRow =
   | {
@@ -79,9 +80,11 @@ function renderValue(val: any) {
 export function LeafRowView({
   row,
   onFillPath,
+  onExtractRulePath,
 }: {
   row: Extract<TreeRow, { kind: 'leaf' }>;
   onFillPath?: (path: string) => void;
+  onExtractRulePath?: (path: string, mode?: JsonCleanExtractMode) => void;
 }) {
   const handleFillPath = useCallback(
     (e: React.MouseEvent) => {
@@ -89,6 +92,14 @@ export function LeafRowView({
       onFillPath?.(row.path);
     },
     [onFillPath, row.path]
+  );
+
+  const handleExtractRulePath = useCallback(
+    (e: React.MouseEvent, mode: JsonCleanExtractMode = 'generalized') => {
+      e.stopPropagation();
+      onExtractRulePath?.(row.path, mode);
+    },
+    [onExtractRulePath, row.path]
   );
 
   return (
@@ -101,15 +112,28 @@ export function LeafRowView({
           {!row.isLast ? <span className="text-slate-500">,</span> : null}
         </div>
 
-        {onFillPath ? (
+        {onFillPath || onExtractRulePath ? (
           <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity px-2">
-            <button
-              onClick={handleFillPath}
-              className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
-              title="填充 JSONPath"
-            >
-              <CornerLeftUp className="w-3.5 h-3.5" />
-            </button>
+            {onFillPath ? (
+              <button
+                onClick={handleFillPath}
+                className="p-1 text-slate-400 hover:text-blue-600 hover:bg-blue-50 rounded transition-all"
+                title="填充 JSONPath"
+              >
+                <CornerLeftUp className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
+
+            {onExtractRulePath ? (
+              <button
+                onClick={(e) => handleExtractRulePath(e, 'generalized')}
+                onContextMenu={(e) => handleExtractRulePath(e, 'precise')}
+                className="p-1 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded transition-all"
+                title="提取清理规则（再次点击切换精确索引，右键直接精确）"
+              >
+                <Check className="w-3.5 h-3.5" />
+              </button>
+            ) : null}
           </div>
         ) : null}
       </div>
@@ -121,10 +145,12 @@ export function ContainerRowView({
   row,
   onToggle,
   onFillPath,
+  onExtractRulePath,
 }: {
   row: Extract<TreeRow, { kind: 'container' }>;
   onToggle: (path: string) => void;
   onFillPath?: (path: string) => void;
+  onExtractRulePath?: (path: string, mode?: JsonCleanExtractMode) => void;
 }) {
   const [copied, setCopied] = useState(false);
   const BracketOpen = row.containerType === 'array' ? '[' : '{';
@@ -152,6 +178,14 @@ export function ContainerRowView({
       onFillPath?.(row.path);
     },
     [onFillPath, row.path]
+  );
+
+  const handleExtractRulePath = useCallback(
+    (e: React.MouseEvent, mode: JsonCleanExtractMode = 'generalized') => {
+      e.stopPropagation();
+      onExtractRulePath?.(row.path, mode);
+    },
+    [onExtractRulePath, row.path]
   );
 
   const isCollapsed = !row.isExpanded;
@@ -202,6 +236,17 @@ export function ContainerRowView({
       </div>
 
       <div className="flex items-center gap-1 ml-auto opacity-0 group-hover:opacity-100 transition-opacity px-2">
+        {onExtractRulePath ? (
+          <button
+            onClick={(e) => handleExtractRulePath(e, 'generalized')}
+            onContextMenu={(e) => handleExtractRulePath(e, 'precise')}
+            className="p-1 text-slate-400 hover:text-cyan-600 hover:bg-cyan-50 rounded transition-all"
+            title="提取清理规则（再次点击切换精确索引，右键直接精确）"
+          >
+            <Check className="w-3.5 h-3.5" />
+          </button>
+        ) : null}
+
         {onFillPath ? (
           <button
             onClick={handleFillPath}
